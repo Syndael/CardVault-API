@@ -3,9 +3,9 @@ A personal card collection management system focused on Trading Card Games (TCG)
 REST-API (CRUD)
 
 Make .env:
-    DB_HOST=localhost
-    DB_PORT=3306
-    DB_NAME=card_collection
-    DB_USER=user
-    DB_PASSWORD=password
-    CORS_ALLOWED_ORIGINS=http://localhost:5173
+* DB_HOST=localhost
+* DB_PORT=3306
+* DB_NAME=card_collection
+* DB_USER=user
+* DB_PASSWORD=password
+* CORS_ALLOWED_ORIGINS=http://localhost:5173
