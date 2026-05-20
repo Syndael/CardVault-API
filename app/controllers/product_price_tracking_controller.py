@@ -11,5 +11,7 @@ product_price_tracking_blueprint = create_crud_blueprint(
     "product_price_tracking",
     ProductPriceTrackingService,
     ProductPriceTrackingSchema,
-    "tracking_id"
+    "tracking_id",
+    read_roles=["product_read", "admin"],
+    write_roles=["product_write", "admin"]
 )

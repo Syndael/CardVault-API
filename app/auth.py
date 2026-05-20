@@ -125,7 +125,7 @@ def require_auth(func):
     return wrapper
 
 
-def require_role(role_name: str):
+def require_role(*role_names):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -135,9 +135,8 @@ def require_role(role_name: str):
             user = get_user_from_token(token)
             if not user:
                 return jsonify({"message": "Unauthorized"}), 401
-            # user.user_roles is a relationship to UserRoleModel which has role
-            roles = [ur.role.name for ur in getattr(user, "user_roles", [])]
-            if role_name not in roles:
+            user_roles = [ur.role.name for ur in getattr(user, "user_roles", [])]
+            if not any(r in user_roles for r in role_names):
                 return jsonify({"message": "Forbidden"}), 403
             g.current_user = user
             return func(*args, **kwargs)
@@ -145,6 +144,14 @@ def require_role(role_name: str):
         return wrapper
 
     return decorator
+
+
+def has_any_role(*role_names):
+    user = getattr(g, "current_user", None)
+    if not user:
+        return False
+    user_roles = [ur.role.name for ur in getattr(user, "user_roles", [])]
+    return any(r in user_roles for r in role_names)
 
 
 def get_token_from_header():

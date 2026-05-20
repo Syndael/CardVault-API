@@ -64,4 +64,7 @@ INSERT INTO types (type, name) VALUES
 
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Full application administration'),
-('user', 'Standard application user');
+('user', 'Standard application user'),
+('product_read', 'Read-only access to product catalog'),
+('product_write', 'Create, edit and delete products'),
+('inventory_manage', 'Manage inventory and purchases');

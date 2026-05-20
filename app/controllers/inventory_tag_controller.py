@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+import app.auth as auth
 from app.schemas.inventory_tag_schema import InventoryTagSchema
 from app.services.inventory_tag_service import InventoryTagService
 
@@ -14,6 +15,7 @@ schema_many = InventoryTagSchema(many=True)
     methods=["GET"],
     strict_slashes=False
 )
+@auth.require_role("inventory_manage", "admin")
 def get_tags(inventory_id):
     tags = InventoryTagService.get_by_inventory(inventory_id)
     return jsonify(schema_many.dump(tags))
@@ -24,6 +26,7 @@ def get_tags(inventory_id):
     methods=["POST"],
     strict_slashes=False
 )
+@auth.require_role("inventory_manage", "admin")
 def add_tag(inventory_id):
     body   = request.get_json() or {}
     tag_id = body.get("tag_id")
@@ -46,6 +49,7 @@ def add_tag(inventory_id):
     methods=["DELETE"],
     strict_slashes=False
 )
+@auth.require_role("inventory_manage", "admin")
 def remove_tag(inventory_id, tag_id):
     deleted = InventoryTagService.remove(inventory_id, tag_id)
     if not deleted:

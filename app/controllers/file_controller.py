@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 import requests
 from flask import request, jsonify
 
+import app.auth as auth
 from app.controllers.crud_controller import create_crud_blueprint
 from app.models.setting_model import SettingModel
 from app.repositories.file_repository import FileRepository, DEFAULT_IMG_DIR, API_ROOT
@@ -15,7 +16,9 @@ file_blueprint = create_crud_blueprint(
     "files",
     FileService,
     FileSchema,
-    "file_id"
+    "file_id",
+    read_roles=["product_read", "admin"],
+    write_roles=["product_write", "admin"]
 )
 
 
@@ -33,6 +36,7 @@ def download_manual_options():
 
 @file_blueprint.route('/download-manual', methods=['POST'])
 @file_blueprint.route('/download-manual/', methods=['POST'])
+@auth.require_role("product_write", "admin")
 def download_manual_file():
     """Download an image URL and store it under the configured img.path
 

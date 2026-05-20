@@ -7,5 +7,7 @@ product_blueprint = create_crud_blueprint(
     "products",
     ProductService,
     ProductSchema,
-    "product_id"
+    "product_id",
+    read_roles=["product_read", "admin"],
+    write_roles=["product_write", "admin"]
 )

@@ -7,5 +7,7 @@ product_translation_blueprint = create_crud_blueprint(
     "product_translations",
     ProductTranslationService,
     ProductTranslationSchema,
-    "translation_id"
+    "translation_id",
+    read_roles=["product_read", "admin"],
+    write_roles=["product_write", "admin"]
 )

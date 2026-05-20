@@ -1,4 +1,4 @@
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, post_dump
 
 
 class UserSchema(Schema):
@@ -13,3 +13,7 @@ class UserSchema(Schema):
     password_changed_at = fields.DateTime(allow_none=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
+    roles = fields.Method("get_roles", dump_only=True)
+
+    def get_roles(self, obj):
+        return [ur.role.name for ur in getattr(obj, "user_roles", [])]

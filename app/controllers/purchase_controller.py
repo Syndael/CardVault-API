@@ -7,5 +7,7 @@ purchase_blueprint = create_crud_blueprint(
     "purchases",
     PurchaseService,
     PurchaseSchema,
-    "purchase_id"
+    "purchase_id",
+    read_roles=["inventory_manage", "admin"],
+    write_roles=["inventory_manage", "admin"]
 )

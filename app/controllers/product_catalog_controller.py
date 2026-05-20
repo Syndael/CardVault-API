@@ -2,9 +2,10 @@ import mimetypes
 import os
 from math import ceil
 
-from flask import Blueprint, jsonify, request, send_file, make_response
+from flask import Blueprint, g, jsonify, request, send_file, make_response
 from sqlalchemy import text
 
+import app.auth as auth
 from app.database.session import db
 from app.utils.pagination import get_pagination_params
 
@@ -78,6 +79,7 @@ def format_name(name, name_alter):
 
 
 @product_catalog_blueprint.route("/", methods=["GET"])
+@auth.require_role("product_read", "admin")
 def get_products():
     page, per_page = get_pagination_params()
     search = (request.args.get("q") or "").strip()

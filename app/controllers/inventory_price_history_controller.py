@@ -11,5 +11,7 @@ inventory_price_history_blueprint = create_crud_blueprint(
     "inventory_price_history",
     InventoryPriceHistoryService,
     InventoryPriceHistorySchema,
-    "history_id"
+    "history_id",
+    read_roles=["inventory_manage", "admin"],
+    write_roles=["inventory_manage", "admin"]
 )

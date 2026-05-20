@@ -7,5 +7,7 @@ inventory_blueprint = create_crud_blueprint(
     "inventory",
     InventoryService,
     InventorySchema,
-    "inventory_id"
+    "inventory_id",
+    read_roles=["inventory_manage", "admin"],
+    write_roles=["inventory_manage", "admin"]
 )

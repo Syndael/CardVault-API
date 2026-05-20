@@ -33,7 +33,18 @@ class InventoryRepository(CrudRepository):
     @classmethod
     def get_paginated(cls, page, per_page):
         query = cls.query()
-        if not _is_admin():
+        show_all = False
+        try:
+            show_all = request.args.get("all", "").lower() in ("1", "true", "yes")
+        except RuntimeError:
+            pass
+        if _is_admin() and show_all:
+            pass
+        elif not _is_admin():
+            user = getattr(g, "current_user", None)
+            if user:
+                query = query.filter(cls.model.user_id == user.id)
+        else:
             user = getattr(g, "current_user", None)
             if user:
                 query = query.filter(cls.model.user_id == user.id)
