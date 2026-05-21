@@ -16,6 +16,10 @@ class FileModel(BaseModel):
         db.Integer,
         db.ForeignKey("inventory.id", ondelete="RESTRICT")
     )
+    purchase_id = db.Column(
+        db.Integer,
+        db.ForeignKey("purchases.id", ondelete="RESTRICT")
+    )
     language_id = db.Column(
         db.Integer,
         db.ForeignKey("languages.id", ondelete="RESTRICT")
@@ -35,5 +39,6 @@ class FileModel(BaseModel):
 
     product = db.relationship("ProductModel", backref="files", lazy=True)
     inventory = db.relationship("InventoryModel", backref="files", lazy=True)
+    purchase = db.relationship("PurchaseModel", backref="files", lazy=True)
     language = db.relationship("LanguageModel", backref="files", lazy=True)
     file_type = db.relationship("TypeModel", backref="files", lazy=True)

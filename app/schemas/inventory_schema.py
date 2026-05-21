@@ -30,3 +30,11 @@ class InventorySchema(Schema):
     purchase = fields.Nested(PurchaseSchema, dump_only=True)
     language = fields.Nested(LanguageSchema, dump_only=True)
     condition = fields.Nested(ProductConditionSchema, dump_only=True)
+    product_image_url = fields.Method("get_product_image_url", dump_only=True)
+    inventory_image_url = fields.Method("get_inventory_image_url", dump_only=True)
+
+    def get_product_image_url(self, obj):
+        return getattr(obj, "_product_image_url", None)
+
+    def get_inventory_image_url(self, obj):
+        return getattr(obj, "_inventory_image_url", None)

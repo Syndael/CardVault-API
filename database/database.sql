@@ -244,6 +244,7 @@ CREATE TABLE files (
   id INT AUTO_INCREMENT PRIMARY KEY,
   product_id INT NULL,
   inventory_id INT NULL,
+  purchase_id INT NULL,
   language_id INT NULL,
   original_name VARCHAR(255) NOT NULL,
   stored_name VARCHAR(255) NOT NULL,
@@ -255,6 +256,11 @@ CREATE TABLE files (
   CONSTRAINT fk_files_inventory
     FOREIGN KEY (inventory_id)
     REFERENCES inventory(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_files_purchase
+    FOREIGN KEY (purchase_id)
+    REFERENCES purchases(id)
     ON DELETE RESTRICT,
 
   CONSTRAINT fk_files_product

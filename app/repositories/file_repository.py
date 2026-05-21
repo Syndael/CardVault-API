@@ -17,6 +17,7 @@ class FileRepository(CrudRepository):
     create_fields = (
         "product_id",
         "inventory_id",
+        "purchase_id",
         "language_id",
         "original_name",
         "stored_name",

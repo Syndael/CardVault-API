@@ -71,6 +71,9 @@ def login_user(identifier: str, password: str, user_agent: str = None, ip_addres
 def _get_token_from_header():
     auth = request.headers.get("Authorization") or ""
     if not auth:
+        token = request.args.get("token")
+        if token:
+            return token
         return None
     parts = auth.split()
     if len(parts) == 2 and parts[0].lower() == "bearer":

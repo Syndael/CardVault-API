@@ -7,10 +7,13 @@ from flask import request, jsonify
 import app.auth as auth
 from app.controllers.crud_controller import create_crud_blueprint
 from app.models.setting_model import SettingModel
+from app.models.type_model import TypeModel
 from app.repositories.file_repository import FileRepository, DEFAULT_IMG_DIR, API_ROOT
 from app.schemas.file_schema import FileSchema
 from app.services.file_service import FileService
+from app.services.inventory_service import InventoryService
 from app.services.product_service import ProductService
+from app.services.purchase_service import PurchaseService
 
 file_blueprint = create_crud_blueprint(
     "files",
@@ -116,6 +119,175 @@ def download_manual_file():
         'stored_name': stored_name,
         'file_path': os.path.join(img_dir, 'manual', collection_code, stored_name),
         'file_type_id': None,
+        'file_size': os.path.getsize(target_path)
+    }
+
+    try:
+        created = FileRepository.create(payload)
+    except Exception as e:
+        return jsonify({'message': 'Error creating file record', 'error': str(e)}), 500
+
+    schema = FileSchema()
+    return jsonify(schema.dump(created)), 201
+
+
+@file_blueprint.route('/by-inventory/<int:inventory_id>', methods=['GET'])
+def get_inventory_files(inventory_id):
+    from app.models.file_model import FileModel
+    files = FileModel.query.filter_by(inventory_id=inventory_id).all()
+    schema = FileSchema(many=True)
+    return jsonify(schema.dump(files))
+
+
+@file_blueprint.route('/by-purchase/<int:purchase_id>', methods=['GET'])
+def get_purchase_files(purchase_id):
+    from app.models.file_model import FileModel
+    files = FileModel.query.filter_by(purchase_id=purchase_id).all()
+    schema = FileSchema(many=True)
+    return jsonify(schema.dump(files))
+
+
+def _resolve_path_pattern(pattern, **variables):
+    for key, value in variables.items():
+        pattern = pattern.replace(f'{{{key}}}', str(value))
+    return pattern
+
+
+def _get_image_type_id():
+    row = TypeModel.query.filter_by(type="file", name="image").first()
+    return row.id if row else None
+
+
+@file_blueprint.route('/upload-inventory', methods=['POST'])
+@auth.require_role("inventory_manage", "admin")
+def upload_inventory_file():
+    inventory_id = request.form.get('inventory_id')
+    uploaded_file = request.files.get('file')
+
+    if not inventory_id or not uploaded_file:
+        return jsonify({'message': 'inventory_id and file are required'}), 400
+
+    try:
+        inventory_id = int(inventory_id)
+    except (ValueError, TypeError):
+        return jsonify({'message': 'inventory_id must be an integer'}), 400
+
+    inventory = InventoryService.get_by_id(inventory_id)
+    if not inventory:
+        return jsonify({'message': 'Inventory not found'}), 404
+
+    product = getattr(inventory, 'product', None)
+    collection = getattr(inventory, 'collection', None)
+    if not product or not collection or not getattr(collection, 'code', None):
+        return jsonify({'message': 'Inventory product or collection missing'}), 400
+
+    card_type = getattr(collection, 'card_type', None)
+    card_type_name = getattr(card_type, 'short_name', None) or getattr(card_type, 'name', 'unknown')
+    collection_code = collection.code
+    product_number = product.product_number or 'unknown'
+
+    path_setting = SettingModel.query.filter_by(setting_key="app.inventory.files.path").first()
+    base_dir = path_setting.setting_value if path_setting and path_setting.setting_value else "./../.files/inventory"
+    target_base = base_dir if os.path.isabs(base_dir) else os.path.join(API_ROOT, base_dir)
+
+    pattern_setting = SettingModel.query.filter_by(setting_key="app.inventory.files.path.pattern").first()
+    pattern = pattern_setting.setting_value if pattern_setting and pattern_setting.setting_value else "{card_type}/{collection_code}/{product_number}/{inventory_id}"
+
+    original_name = os.path.basename(uploaded_file.filename or 'image')
+    if not os.path.splitext(original_name)[1]:
+        original_name += '.jpg'
+
+    stored_name = original_name
+    sub_dir = _resolve_path_pattern(pattern,
+        card_type=card_type_name,
+        collection_code=collection_code,
+        product_number=product_number,
+        inventory_id=inventory_id
+    )
+    target_dir = os.path.join(target_base, sub_dir)
+    os.makedirs(target_dir, exist_ok=True)
+    target_path = os.path.join(target_dir, stored_name)
+
+    try:
+        uploaded_file.save(target_path)
+    except Exception as e:
+        return jsonify({'message': 'Error saving file', 'error': str(e)}), 500
+
+    payload = {
+        'inventory_id': inventory_id,
+        'original_name': original_name,
+        'stored_name': stored_name,
+        'file_path': os.path.join(base_dir, sub_dir, stored_name),
+        'file_type_id': _get_image_type_id(),
+        'file_size': os.path.getsize(target_path)
+    }
+
+    try:
+        created = FileRepository.create(payload)
+    except Exception as e:
+        return jsonify({'message': 'Error creating file record', 'error': str(e)}), 500
+
+    schema = FileSchema()
+    return jsonify(schema.dump(created)), 201
+
+
+@file_blueprint.route('/upload-purchase', methods=['POST'])
+@auth.require_role("inventory_manage", "admin")
+def upload_purchase_file():
+    purchase_id = request.form.get('purchase_id')
+    uploaded_file = request.files.get('file')
+
+    if not purchase_id or not uploaded_file:
+        return jsonify({'message': 'purchase_id and file are required'}), 400
+
+    try:
+        purchase_id = int(purchase_id)
+    except (ValueError, TypeError):
+        return jsonify({'message': 'purchase_id must be an integer'}), 400
+
+    purchase = PurchaseService.get_by_id(purchase_id)
+    if not purchase:
+        return jsonify({'message': 'Purchase not found'}), 404
+
+    purchase_date = getattr(purchase, 'purchase_date', None)
+    if not purchase_date:
+        return jsonify({'message': 'Purchase date missing'}), 400
+
+    year = str(purchase_date.year)
+    month = f"{purchase_date.month:02d}"
+
+    path_setting = SettingModel.query.filter_by(setting_key="app.purchase.files.path").first()
+    base_dir = path_setting.setting_value if path_setting and path_setting.setting_value else "./../.files/purchases"
+    target_base = base_dir if os.path.isabs(base_dir) else os.path.join(API_ROOT, base_dir)
+
+    pattern_setting = SettingModel.query.filter_by(setting_key="app.purchase.files.path.pattern").first()
+    pattern = pattern_setting.setting_value if pattern_setting and pattern_setting.setting_value else "{year}/{month}/{purchase_id}"
+
+    original_name = os.path.basename(uploaded_file.filename or 'image')
+    if not os.path.splitext(original_name)[1]:
+        original_name += '.jpg'
+
+    stored_name = original_name
+    sub_dir = _resolve_path_pattern(pattern,
+        year=year,
+        month=month,
+        purchase_id=purchase_id
+    )
+    target_dir = os.path.join(target_base, sub_dir)
+    os.makedirs(target_dir, exist_ok=True)
+    target_path = os.path.join(target_dir, stored_name)
+
+    try:
+        uploaded_file.save(target_path)
+    except Exception as e:
+        return jsonify({'message': 'Error saving file', 'error': str(e)}), 500
+
+    payload = {
+        'purchase_id': purchase_id,
+        'original_name': original_name,
+        'stored_name': stored_name,
+        'file_path': os.path.join(base_dir, sub_dir, stored_name),
+        'file_type_id': _get_image_type_id(),
         'file_size': os.path.getsize(target_path)
     }
 
