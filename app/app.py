@@ -1,6 +1,8 @@
 from flask import Flask, g, request
 
 from app.config.config import Config
+from app.models.user_role_model import UserRoleModel
+from app.models.role_model import RoleModel
 from app.controllers.collection_controller import collection_blueprint
 from app.controllers.collection_translation_controller import collection_translation_blueprint
 from app.controllers.entity_controller import entity_blueprint

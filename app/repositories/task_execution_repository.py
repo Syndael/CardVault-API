@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.task_execution_model import TaskExecutionModel
 from app.repositories.crud_repository import CrudRepository
@@ -14,7 +14,7 @@ class TaskExecutionRepository(CrudRepository):
     def get_pending(cls):
         return cls.model.query.filter(
             cls.model.status == "pending",
-            cls.model.scheduled_date <= datetime.utcnow(),
+            cls.model.scheduled_date <= datetime.now(timezone.utc).replace(tzinfo=None),
         ).order_by(cls.model.scheduled_date).all()
 
     @classmethod

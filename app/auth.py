@@ -1,7 +1,7 @@
 import hashlib
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import request, g, jsonify
@@ -52,7 +52,7 @@ def login_user(identifier: str, password: str, user_agent: str = None, ip_addres
 
     token = _generate_token()
     token_hash = _hash_token(token)
-    expires_at = datetime.utcnow() + timedelta(days=SESSION_EXPIRES_DAYS)
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=SESSION_EXPIRES_DAYS)
 
     session = UserSessionModel(
         user_id=user.id,
@@ -82,7 +82,7 @@ def get_user_from_token(token: str):
     if not token:
         return None
     token_hash = _hash_token(token)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     session = (
         UserSessionModel.query
         .filter_by(token_hash=token_hash)
@@ -104,7 +104,7 @@ def revoke_token(token: str) -> bool:
     session = UserSessionModel.query.filter_by(token_hash=token_hash).first()
     if not session:
         return False
-    session.revoked_at = datetime.utcnow()
+    session.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.session.commit()
     return True
 
