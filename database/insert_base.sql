@@ -79,6 +79,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('sync.pokemon.products.card.type', 'POK'),
 ('sync.pokemon.products.migration.languages', 'en;es;ja;ko;de;'),
 ('sync.pokemon.products.files.path', './../.files/products_images'),
+('sync.pokemon.products.img.path.pattern', '{card_type}/{collection_code}'),
 ('bot.telegram.allowed.ids', ''),
 ('bot.telegram.admin.ids', ''),
 ('app.inventory.files.path', './../.files/inventory'),
