@@ -433,7 +433,7 @@ CREATE TABLE scheduled_tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
   script_path VARCHAR(500) NOT NULL,
-  cron_expression VARCHAR(100) NOT NULL,
+  cron_expression VARCHAR(100) NULL,
   enabled BIT NOT NULL DEFAULT b'1',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -456,3 +456,6 @@ CREATE TABLE task_executions (
   INDEX idx_executions_status_date (status, scheduled_date),
   INDEX idx_executions_task (scheduled_task_id)
 );
+
+ALTER TABLE products ADD COLUMN is_manual BIT(1) NOT NULL DEFAULT b'0' AFTER `product_number`;
+ALTER TABLE products DROP INDEX uq_collection_product, ADD UNIQUE INDEX uq_collection_product(collection_id, product_number, product_type_id, is_manual) USING BTREE;

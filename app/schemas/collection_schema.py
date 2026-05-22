@@ -15,3 +15,13 @@ class CollectionSchema(Schema):
         TypeSchema,
         dump_only=True
     )
+    name = fields.Method("get_name", dump_only=True)
+
+    def get_name(self, obj):
+        if not obj.translations:
+            return None
+        sorted_trans = sorted(
+            obj.translations,
+            key=lambda t: t.language.priority_order if t.language else 999
+        )
+        return sorted_trans[0].name if sorted_trans else None

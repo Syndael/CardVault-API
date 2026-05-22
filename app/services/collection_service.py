@@ -18,6 +18,10 @@ class CollectionService:
         return CollectionRepository.get_search_paginated(search, page, per_page)
 
     @staticmethod
+    def get_filtered_paginated(filters, page, per_page):
+        return CollectionRepository.get_filtered_paginated(filters, page, per_page)
+
+    @staticmethod
     def get_by_id(collection_id):
         return CollectionRepository.get_by_id(collection_id)
 
@@ -37,5 +41,6 @@ class CollectionService:
         entity = CollectionRepository.get_by_id(collection_id)
         if not entity:
             return None
-        CollectionRepository.delete(entity)
+        if not CollectionRepository.delete(entity):
+            raise ValueError("No se puede eliminar la colección porque tiene productos o traducciones asociados")
         return True

@@ -53,6 +53,9 @@ WHERE (
 AND (:is_verified = -1 OR p.is_verified = :is_verified)
 AND (:is_manual = -1 OR c.is_manual = :is_manual)
 AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
+AND (:collection_code = '' OR c.code LIKE :collection_code_like)
+AND (:product_number = '' OR p.product_number LIKE :product_number_like)
+AND (:product_name = '' OR pt.name LIKE :product_name_like OR pt.name_alter LIKE :product_name_like)
 AND (
     :pending_sync = 0
     OR (
@@ -87,6 +90,9 @@ def get_products():
     raw_manual = request.args.get("is_manual")
     raw_type_id = request.args.get("product_type_id")
     raw_pending = request.args.get("pending_sync")
+    raw_col_code = (request.args.get("collection_code") or "").strip()
+    raw_prod_number = (request.args.get("product_number") or "").strip()
+    raw_prod_name = (request.args.get("product_name") or "").strip()
     params = {
         "search": search,
         "search_like": f"%{search}%",
@@ -94,6 +100,12 @@ def get_products():
         "is_manual": int(raw_manual) if raw_manual in ("0", "1") else -1,
         "product_type_id": int(raw_type_id) if raw_type_id else -1,
         "pending_sync": 1 if raw_pending == "1" else 0,
+        "collection_code": raw_col_code,
+        "collection_code_like": f"%{raw_col_code}%",
+        "product_number": raw_prod_number,
+        "product_number_like": f"%{raw_prod_number}%",
+        "product_name": raw_prod_name,
+        "product_name_like": f"%{raw_prod_name}%",
         "limit": per_page,
         "offset": (page - 1) * per_page
     }
@@ -109,7 +121,8 @@ def get_products():
                 p.id AS product_id,
                 c.id AS collection_id,
                 c.code AS collection_code,
-                CAST(c.is_manual AS UNSIGNED) AS is_manual,
+                CAST(c.is_manual AS UNSIGNED) AS collection_is_manual,
+                CAST(p.is_manual AS UNSIGNED) AS product_is_manual,
                 ct.name AS collection_name,
                 ct.name_alter AS collection_name_alter,
                 p.product_number AS product_number,
@@ -148,7 +161,8 @@ def get_products():
                 "product_id": row["product_id"],
                 "collection_id": row["collection_id"],
                 "collection_code": row["collection_code"],
-                "is_manual": row["is_manual"] == 1,
+                "collection_is_manual": row["collection_is_manual"] == 1,
+                "product_is_manual": row["product_is_manual"] == 1,
                 "is_verified": row["is_verified"] == 1,
                 "collection_name": format_name(
                     row["collection_name"],

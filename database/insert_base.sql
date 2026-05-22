@@ -11,7 +11,13 @@ INSERT INTO types (type, name, short_name) VALUES
 ('card', 'Vanguard', 'VAN'),
 ('card', 'Weiss Schwarz', 'WS'),
 ('card', 'World of Warcraft TCG', 'WOW'),
-('card', 'Yu-Gi-Oh!', 'YUG');
+('card', 'Yu-Gi-Oh!', 'YUG'),
+('file', 'image'),
+('file', 'invoice'),
+('file', 'document'),
+('entity', 'store'),
+('entity', 'person'),
+('entity', 'platform');
 
 INSERT INTO price_sources (
   name,
@@ -54,17 +60,28 @@ INSERT INTO product_conditions (
 ('Played', 'PL', '6'),
 ('Poor', 'PR', '7');
 
-INSERT INTO types (type, name) VALUES
-('file', 'image'),
-('file', 'invoice'),
-('file', 'document'),
-('entity', 'store'),
-('entity', 'person'),
-('entity', 'platform');
-
 INSERT INTO roles (name, description) VALUES
 ('admin', 'Full application administration'),
 ('user', 'Standard application user'),
 ('product_read', 'Read-only access to product catalog'),
 ('product_write', 'Create, edit and delete products'),
-('inventory_manage', 'Manage inventory and purchases');
+('inventory_manage', 'Manage inventory and purchases'),
+('collection_read', 'Read-only access to collections'),
+('collection_write', 'Create, edit and delete collections'),
+('scheduled_task_read', 'View scheduled tasks and executions'),
+('scheduled_task_write', 'Create, edit and delete scheduled tasks and executions');
+
+INSERT INTO settings (setting_key, setting_value) VALUES
+('sync.pokemon.collections.api.base', 'https://api.tcgdex.net/v2'),
+('sync.pokemon.collections.card.type', 'POK'),
+('sync.pokemon.collections.migration.languages', 'en-EN;es-ES;ja-JP;de-DE;ko-KR;fr-FR;it-IT;pt-PT;'),
+('sync.pokemon.products.api.base', 'https://api.tcgdex.net/v2'),
+('sync.pokemon.products.card.type', 'POK'),
+('sync.pokemon.products.migration.languages', 'en;es;ja;ko;de;'),
+('sync.pokemon.products.files.path', './../.files/products_images'),
+('bot.telegram.allowed.ids', ''),
+('bot.telegram.admin.ids', ''),
+('app.inventory.files.path', './../.files/inventory'),
+('app.inventory.files.path.pattern', '{card_type}/{collection_code}/{product_number}/{inventory_id}'),
+('app.purchase.files.path', './../.files/purchases'),
+('app.purchase.files.path.pattern', '{year}/{month}/{purchase_id}');

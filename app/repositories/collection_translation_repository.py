@@ -1,3 +1,5 @@
+from flask import request
+
 from app.database.session import db
 from app.models.collection_translation_model import (
     CollectionTranslationModel
@@ -13,13 +15,21 @@ class CollectionTranslationRepository:
 
     @staticmethod
     def get_paginated(page, per_page):
-        return paginate_query(
-            CollectionTranslationModel.query.order_by(
-                CollectionTranslationModel.id
-            ),
-            page,
-            per_page
+        query = CollectionTranslationModel.query.order_by(
+            CollectionTranslationModel.id
         )
+        try:
+            collection_id = request.args.get("collection_id")
+        except RuntimeError:
+            collection_id = None
+        if collection_id is not None:
+            try:
+                query = query.filter(
+                    CollectionTranslationModel.collection_id == int(collection_id)
+                )
+            except ValueError:
+                pass
+        return paginate_query(query, page, per_page)
 
     @staticmethod
     def get_by_id(translation_id):
