@@ -11,7 +11,9 @@ INSERT INTO types (type, name, short_name) VALUES
 ('card', 'Vanguard', 'VAN'),
 ('card', 'Weiss Schwarz', 'WS'),
 ('card', 'World of Warcraft TCG', 'WOW'),
-('card', 'Yu-Gi-Oh!', 'YUG'),
+('card', 'Yu-Gi-Oh!', 'YUG');
+
+INSERT INTO types (type, name) VALUES
 ('file', 'image'),
 ('file', 'invoice'),
 ('file', 'document'),
@@ -80,8 +82,6 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('sync.pokemon.products.migration.languages', 'en;es;ja;ko;de;'),
 ('sync.pokemon.products.files.path', './../.files/products_images'),
 ('sync.pokemon.products.img.path.pattern', '{card_type}/{collection_code}'),
-('bot.telegram.allowed.ids', ''),
-('bot.telegram.admin.ids', ''),
 ('app.inventory.files.path', './../.files/inventory'),
 ('app.inventory.files.path.pattern', '{card_type}/{collection_code}/{product_number}/{inventory_id}'),
 ('app.purchase.files.path', './../.files/purchases'),

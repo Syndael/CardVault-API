@@ -36,6 +36,8 @@ CREATE TABLE products (
   collection_id INT NOT NULL,
   product_type_id INT NOT NULL,
   product_number VARCHAR(50) NULL,
+  is_manual BIT(1) NOT NULL DEFAULT b'0',
+  is_verified BIT NOT NULL DEFAULT b'0',
   force_download BIT NULL DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -50,7 +52,7 @@ CREATE TABLE products (
     ON DELETE RESTRICT,
 
   CONSTRAINT uq_collection_product
-    UNIQUE (collection_id, product_number, product_type_id)
+    UNIQUE (collection_id, product_number, product_type_id, is_manual)
 );
 
 CREATE INDEX idx_products_collection ON products(collection_id);
@@ -146,6 +148,7 @@ CREATE TABLE purchases (
   currency VARCHAR(10) DEFAULT 'EUR',
   external_reference VARCHAR(255) NULL,
   notes TEXT,
+  user_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_purchases_entity
@@ -157,6 +160,7 @@ CREATE TABLE purchases (
 CREATE TABLE purchase_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
   purchase_id INT NOT NULL,
+  product_id INT NOT NULL,
   unit_price DECIMAL(10,2) NOT NULL,
   quantity INT NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -164,6 +168,11 @@ CREATE TABLE purchase_items (
   CONSTRAINT fk_purchase_items_purchase
     FOREIGN KEY (purchase_id)
     REFERENCES purchases(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_purchase_items_product_id
+    FOREIGN KEY (product_id)
+    REFERENCES products(id)
     ON DELETE RESTRICT
 );
 
@@ -195,8 +204,10 @@ CREATE TABLE inventory (
   id INT AUTO_INCREMENT PRIMARY KEY,
   product_id INT NOT NULL,
   collection_id INT NOT NULL,
+  user_id INT NOT NULL,
   extra_type_id INT,
   purchase_id INT,
+  purchase_item_id INT,
   quantity INT DEFAULT 1,
   is_sealed BOOLEAN DEFAULT FALSE,
   posted_instagram BOOLEAN DEFAULT FALSE,
@@ -234,11 +245,23 @@ CREATE TABLE inventory (
   CONSTRAINT fk_inventory_purchase
     FOREIGN KEY (purchase_id)
     REFERENCES purchases(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_inventory_purchase_item
+    FOREIGN KEY (purchase_item_id)
+    REFERENCES purchase_items(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_inventory_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
     ON DELETE RESTRICT
 );
 
 CREATE INDEX idx_inventory_product ON inventory(product_id);
 CREATE INDEX idx_inventory_collection ON inventory(collection_id);
+CREATE INDEX fk_inventory_purchase_item ON inventory(purchase_item_id);
+CREATE INDEX idx_inventory_user ON inventory(user_id);
 
 CREATE TABLE files (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -412,23 +435,6 @@ CREATE TABLE inventory_tags (
 
 CREATE INDEX idx_inventory_tags_tag ON inventory_tags(tag_id);
 
-ALTER TABLE products ADD COLUMN is_verified BIT NOT NULL DEFAULT b'0' AFTER force_download;
-
-ALTER TABLE inventory
-    ADD COLUMN user_id INT NOT NULL DEFAULT 1
-    AFTER condition_id,
-    ADD INDEX idx_inventory_user (user_id);
-
-ALTER TABLE purchases
-    ADD COLUMN user_id INT NOT NULL DEFAULT 1
-    AFTER notes,
-    ADD INDEX idx_purchases_user (user_id);
-
-ALTER TABLE purchase_items
-    ADD COLUMN product_id INT NOT NULL DEFAULT 1
-    AFTER purchase_id,
-    ADD INDEX idx_purchase_items_product (product_id);
-
 CREATE TABLE scheduled_tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
@@ -456,12 +462,3 @@ CREATE TABLE task_executions (
   INDEX idx_executions_status_date (status, scheduled_date),
   INDEX idx_executions_task (scheduled_task_id)
 );
-
-ALTER TABLE products ADD COLUMN is_manual BIT(1) NOT NULL DEFAULT b'0' AFTER `product_number`;
-ALTER TABLE products DROP INDEX uq_collection_product, ADD UNIQUE INDEX uq_collection_product(collection_id, product_number, product_type_id, is_manual) USING BTREE;
-
-ALTER TABLE inventory ADD CONSTRAINT fk_inventory_purchase_item FOREIGN KEY (purchase_item_id) REFERENCES purchase_items(id) ON DELETE RESTRICT;
-ALTER TABLE inventory ADD INDEX idx_inventory_user (user_id);
-ALTER TABLE inventory ADD CONSTRAINT fk_inventory_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT;
-
-ALTER TABLE purchase_items ADD CONSTRAINT fk_purchase_items_product_id FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT;
