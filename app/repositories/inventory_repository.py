@@ -1,4 +1,5 @@
 from flask import request, g
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.collection_model import CollectionModel
 from app.models.inventory_model import InventoryModel
@@ -23,6 +24,7 @@ class InventoryRepository(CrudRepository):
         "collection_id",
         "extra_type_id",
         "purchase_id",
+        "purchase_item_id",
         "quantity",
         "is_sealed",
         "posted_instagram",
@@ -110,5 +112,16 @@ class InventoryRepository(CrudRepository):
             query = query.join(ProductModel.translations).filter(
                 ProductTranslationModel.name.ilike(f"%{product_name}%")
             )
+
+        query = query.options(
+            joinedload(InventoryModel.collection),
+            joinedload(InventoryModel.language),
+            joinedload(InventoryModel.condition),
+            joinedload(InventoryModel.extra_type),
+            joinedload(InventoryModel.product).selectinload(ProductModel.translations),
+            joinedload(InventoryModel.product).joinedload(ProductModel.product_type),
+            joinedload(InventoryModel.purchase),
+            joinedload(InventoryModel.purchase_item),
+        )
 
         return paginate_query(query, page, per_page)

@@ -17,10 +17,12 @@ def _roles_guard(read_roles, write_roles, method):
 
 
 def create_crud_blueprint(name, service, schema_class, id_name,
-                          read_roles=None, write_roles=None):
+                          read_roles=None, write_roles=None,
+                          list_schema_class=None):
     blueprint = Blueprint(name, __name__)
     schema = schema_class()
     schema_many = schema_class(many=True)
+    list_schema = list_schema_class(many=True) if list_schema_class else schema_many
 
     def _check_role(method):
         return _roles_guard(read_roles, write_roles, method)
@@ -31,7 +33,7 @@ def create_crud_blueprint(name, service, schema_class, id_name,
             return jsonify({"message": "Forbidden"}), 403
         page, per_page = get_pagination_params()
         data = service.get_paginated(page, per_page)
-        return jsonify(paginated_response(data, schema_many))
+        return jsonify(paginated_response(data, list_schema))
 
     @blueprint.route(f"/<int:{id_name}>", methods=["GET"], strict_slashes=False)
     def get_by_id(**kwargs):

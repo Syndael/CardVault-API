@@ -45,7 +45,8 @@ def download_manual_file():
 
     Expected JSON body: { "product_id": <int>, "file_url": "https://..." }
 
-    The saved path will be: <img_dir>/manual/{collection_code}/{collection_code}_{product_number}.{ext}
+    The saved path will use the pattern from sync.pokemon.products.img.path.pattern
+    (default: {card_type}/{collection_code}) instead of a hardcoded /manual/ subdir.
     Returns the created file record.
     """
     # debug: log request body and headers to help diagnose 400 issues
@@ -89,17 +90,29 @@ def download_manual_file():
     else:
         target_base = os.path.join(API_ROOT, img_dir)
 
+    # read and resolve path pattern (same as sync_pokemon_products.py uses)
+    pattern_setting = SettingModel.query.filter_by(setting_key="sync.pokemon.products.img.path.pattern").first()
+    pattern = pattern_setting.setting_value if pattern_setting and pattern_setting.setting_value else "{card_type}/{collection_code}"
+
     collection_code = collection.code
     product_number = product.product_number or ''
+    card_type_obj = getattr(collection, 'card_type', None)
+    card_type = getattr(card_type_obj, 'short_name', None) or getattr(card_type_obj, 'name', 'unknown')
+    is_manual = "1" if getattr(product, 'is_manual', False) else "0"
 
     parsed = urlsplit(file_url)
     original_name = os.path.basename(parsed.path) or 'image'
     ext = os.path.splitext(original_name)[1] or '.jpg'
 
     stored_name = f"{collection_code}_{product_number}{ext}"
-    manual_dir = os.path.join(target_base, 'manual', collection_code)
-    os.makedirs(manual_dir, exist_ok=True)
-    target_path = os.path.join(manual_dir, stored_name)
+    sub_dir = _resolve_path_pattern(pattern,
+        card_type=card_type,
+        is_manual=is_manual,
+        collection_code=collection_code
+    )
+    target_dir = os.path.join(target_base, sub_dir)
+    os.makedirs(target_dir, exist_ok=True)
+    target_path = os.path.join(target_dir, stored_name)
 
     # download
     try:
@@ -117,7 +130,7 @@ def download_manual_file():
         'language_id': language_id,
         'original_name': original_name,
         'stored_name': stored_name,
-        'file_path': os.path.join(img_dir, 'manual', collection_code, stored_name),
+        'file_path': os.path.join(img_dir, sub_dir, stored_name),
         'file_type_id': None,
         'file_size': os.path.getsize(target_path)
     }

@@ -27,6 +27,10 @@ class InventoryModel(BaseModel):
         db.Integer,
         db.ForeignKey("purchases.id", ondelete="RESTRICT")
     )
+    purchase_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("purchase_items.id", ondelete="SET NULL")
+    )
     quantity = db.Column(db.Integer, server_default="1")
     is_sealed = db.Column(BitBoolean, server_default="0")
     posted_instagram = db.Column(BitBoolean, server_default="0")
@@ -62,6 +66,7 @@ class InventoryModel(BaseModel):
     )
     extra_type = db.relationship("TypeModel", backref="inventory", lazy=True)
     purchase = db.relationship("PurchaseModel", backref="inventory", lazy=True)
+    purchase_item = db.relationship("PurchaseItemModel", backref="inventory_entries", lazy=True)
     language = db.relationship("LanguageModel", backref="inventory", lazy=True)
     condition = db.relationship(
         "ProductConditionModel",

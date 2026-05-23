@@ -459,3 +459,9 @@ CREATE TABLE task_executions (
 
 ALTER TABLE products ADD COLUMN is_manual BIT(1) NOT NULL DEFAULT b'0' AFTER `product_number`;
 ALTER TABLE products DROP INDEX uq_collection_product, ADD UNIQUE INDEX uq_collection_product(collection_id, product_number, product_type_id, is_manual) USING BTREE;
+
+ALTER TABLE inventory ADD CONSTRAINT fk_inventory_purchase_item FOREIGN KEY (purchase_item_id) REFERENCES purchase_items(id) ON DELETE RESTRICT;
+ALTER TABLE inventory ADD INDEX idx_inventory_user (user_id);
+ALTER TABLE inventory ADD CONSTRAINT fk_inventory_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT;
+
+ALTER TABLE purchase_items ADD CONSTRAINT fk_purchase_items_product_id FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT;
