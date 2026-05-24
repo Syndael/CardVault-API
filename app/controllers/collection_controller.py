@@ -29,6 +29,7 @@ def get_all():
     if _check_role("GET"):
         return jsonify({"message": "Forbidden"}), 403
     page, per_page = get_pagination_params()
+    sort_by = (request.args.get("sort_by") or "").strip()
     filters = {
         "code": (request.args.get("code") or "").strip(),
         "name": (request.args.get("name") or "").strip(),
@@ -37,13 +38,13 @@ def get_all():
     }
     filters = {k: v for k, v in filters.items() if v}
     if filters:
-        data = CollectionService.get_filtered_paginated(filters, page, per_page)
+        data = CollectionService.get_filtered_paginated(filters, page, per_page, sort_by)
     else:
         search = (request.args.get("q") or "").strip()
         if search:
-            data = CollectionService.get_search_paginated(search, page, per_page)
+            data = CollectionService.get_search_paginated(search, page, per_page, sort_by)
         else:
-            data = CollectionService.get_paginated(page, per_page)
+            data = CollectionService.get_paginated(page, per_page, sort_by)
     return jsonify(paginated_response(data, schema_many))
 
 

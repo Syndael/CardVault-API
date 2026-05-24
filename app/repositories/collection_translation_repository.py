@@ -1,3 +1,5 @@
+from sqlalchemy import or_
+
 from flask import request
 
 from app.database.session import db
@@ -29,6 +31,28 @@ class CollectionTranslationRepository:
                 )
             except ValueError:
                 pass
+
+        try:
+            language_id = request.args.get("language_id")
+        except RuntimeError:
+            language_id = None
+        if language_id is not None:
+            try:
+                query = query.filter(
+                    CollectionTranslationModel.language_id == int(language_id)
+                )
+            except ValueError:
+                pass
+
+        try:
+            name_alter = request.args.get("name_alter")
+        except RuntimeError:
+            name_alter = None
+        if name_alter == "__empty__" and hasattr(CollectionTranslationModel, "name_alter"):
+            query = query.filter(
+                or_(CollectionTranslationModel.name_alter.is_(None), CollectionTranslationModel.name_alter == "")
+            )
+
         return paginate_query(query, page, per_page)
 
     @staticmethod

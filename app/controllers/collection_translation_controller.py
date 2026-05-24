@@ -24,7 +24,7 @@ def _check_role(method):
     return False
 
 
-@collection_translation_blueprint.route("/", methods=["GET"])
+@collection_translation_blueprint.route("/", methods=["GET"], strict_slashes=False)
 def get_all():
     if _check_role("GET"):
         return jsonify({"message": "Forbidden"}), 403
@@ -33,7 +33,7 @@ def get_all():
     return jsonify(paginated_response(data, schema_many))
 
 
-@collection_translation_blueprint.route("/<int:translation_id>", methods=["GET"])
+@collection_translation_blueprint.route("/<int:translation_id>", methods=["GET"], strict_slashes=False)
 def get_by_id(translation_id):
     if _check_role("GET"):
         return jsonify({"message": "Forbidden"}), 403
@@ -44,7 +44,7 @@ def get_by_id(translation_id):
     return jsonify(schema.dump(data))
 
 
-@collection_translation_blueprint.route("/", methods=["POST"])
+@collection_translation_blueprint.route("/", methods=["POST"], strict_slashes=False)
 def create():
     if _check_role("POST"):
         return jsonify({"message": "Forbidden"}), 403
@@ -53,7 +53,7 @@ def create():
     return jsonify(schema.dump(entity)), 201
 
 
-@collection_translation_blueprint.route("/<int:translation_id>", methods=["PATCH"])
+@collection_translation_blueprint.route("/<int:translation_id>", methods=["PATCH"], strict_slashes=False)
 def update(translation_id):
     if _check_role("PATCH"):
         return jsonify({"message": "Forbidden"}), 403
@@ -65,7 +65,7 @@ def update(translation_id):
     return jsonify(schema.dump(entity))
 
 
-@collection_translation_blueprint.route("/<int:translation_id>", methods=["DELETE"])
+@collection_translation_blueprint.route("/<int:translation_id>", methods=["DELETE"], strict_slashes=False)
 def delete(translation_id):
     if _check_role("DELETE"):
         return jsonify({"message": "Forbidden"}), 403

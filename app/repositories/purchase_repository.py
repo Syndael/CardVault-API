@@ -14,7 +14,11 @@ def _is_admin():
 
 class PurchaseRepository(CrudRepository):
     model = PurchaseModel
-    order_by = (PurchaseModel.id,)
+    order_by = (
+        PurchaseModel.purchase_date.desc(),
+        PurchaseModel.entity_id,
+        PurchaseModel.total_amount,
+    )
     create_fields = (
         "entity_id",
         "purchase_date",
@@ -29,7 +33,7 @@ class PurchaseRepository(CrudRepository):
 
     @classmethod
     def get_paginated(cls, page, per_page):
-        query = cls.query()
+        query = cls.model.query.order_by(*cls.order_by)
         if not _is_admin():
             user = getattr(g, "current_user", None)
             if user:

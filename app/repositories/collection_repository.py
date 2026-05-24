@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 from app.database.session import db
 from app.models.collection_model import CollectionModel
 from app.models.collection_translation_model import CollectionTranslationModel
+from app.models.type_model import TypeModel
 from app.utils.pagination import paginate_query
 
 
@@ -20,26 +21,35 @@ class CollectionRepository:
         )
 
     @staticmethod
-    def get_paginated(page, per_page):
+    def _apply_sort(query, sort_by=None):
+        if not sort_by or sort_by == "type_code_manual":
+            return query.order_by(
+                CollectionModel.card_type_id, CollectionModel.code, CollectionModel.is_manual
+            )
+        return query.order_by(CollectionModel.id)
+
+    @staticmethod
+    def get_paginated(page, per_page, sort_by=None):
         return paginate_query(
-            CollectionRepository._base_query().order_by(CollectionModel.id),
+            CollectionRepository._apply_sort(CollectionRepository._base_query(), sort_by),
             page,
             per_page
         )
 
     @staticmethod
-    def get_search_paginated(search, page, per_page):
+    def get_search_paginated(search, page, per_page, sort_by=None):
         like = f"%{search}%"
         query = CollectionRepository._base_query().filter(
             or_(
                 CollectionModel.code.ilike(like),
                 CollectionModel.id.cast(db.String).ilike(like)
             )
-        ).order_by(CollectionModel.id)
+        )
+        query = CollectionRepository._apply_sort(query, sort_by)
         return paginate_query(query, page, per_page)
 
     @staticmethod
-    def get_filtered_paginated(filters, page, per_page):
+    def get_filtered_paginated(filters, page, per_page, sort_by=None):
         query = CollectionRepository._base_query()
         conditions = []
         code = filters.get("code")
@@ -63,7 +73,8 @@ class CollectionRepository:
             conditions.append(CollectionModel.is_manual == (is_manual in ("1", "true", "True")))
         if conditions:
             query = query.filter(*conditions)
-        return paginate_query(query.order_by(CollectionModel.id), page, per_page)
+        query = CollectionRepository._apply_sort(query, sort_by)
+        return paginate_query(query, page, per_page)
 
     @staticmethod
     def get_by_id(collection_id):

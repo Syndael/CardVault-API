@@ -1,3 +1,5 @@
+from sqlalchemy import or_
+
 from flask import request
 
 from app.database.session import db
@@ -56,6 +58,16 @@ class CrudRepository:
                 query = query.filter(cls.model.purchase_id == int(purchase_id))
             except ValueError:
                 pass
+
+        try:
+            name_alter = request.args.get("name_alter")
+        except RuntimeError:
+            name_alter = None
+
+        if name_alter == "__empty__" and hasattr(cls.model, "name_alter"):
+            query = query.filter(
+                or_(cls.model.name_alter.is_(None), cls.model.name_alter == "")
+            )
 
         return paginate_query(query, page, per_page)
 

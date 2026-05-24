@@ -6,7 +6,7 @@ from app.schemas.product_schema import ProductSchema
 
 class ProductTranslationSchema(Schema):
     id = fields.Int(dump_only=True)
-    product_id = fields.Int(load_only=True, required=True)
+    product_id = fields.Int(required=True)
     language_id = fields.Int(required=True)
     name = fields.Str(required=True)
     name_alter = fields.Str(allow_none=True)

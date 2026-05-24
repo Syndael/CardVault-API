@@ -7,19 +7,20 @@ class CollectionService:
         return CollectionRepository.get_all()
 
     @staticmethod
-    def get_paginated(page, per_page):
+    def get_paginated(page, per_page, sort_by=None):
         return CollectionRepository.get_paginated(
             page,
-            per_page
+            per_page,
+            sort_by
         )
 
     @staticmethod
-    def get_search_paginated(search, page, per_page):
-        return CollectionRepository.get_search_paginated(search, page, per_page)
+    def get_search_paginated(search, page, per_page, sort_by=None):
+        return CollectionRepository.get_search_paginated(search, page, per_page, sort_by)
 
     @staticmethod
-    def get_filtered_paginated(filters, page, per_page):
-        return CollectionRepository.get_filtered_paginated(filters, page, per_page)
+    def get_filtered_paginated(filters, page, per_page, sort_by=None):
+        return CollectionRepository.get_filtered_paginated(filters, page, per_page, sort_by)
 
     @staticmethod
     def get_by_id(collection_id):
