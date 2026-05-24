@@ -5,6 +5,7 @@ from app.models.collection_model import CollectionModel
 from app.models.inventory_model import InventoryModel
 from app.models.product_model import ProductModel
 from app.models.product_translation_model import ProductTranslationModel
+from app.models.tag_model import TagModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
 
@@ -112,6 +113,15 @@ class InventoryRepository(CrudRepository):
             query = query.join(ProductModel.translations).filter(
                 ProductTranslationModel.name.ilike(f"%{product_name}%")
             )
+
+        try:
+            tag_name = request.args.get("tag_name", "").strip()
+        except RuntimeError:
+            tag_name = ""
+        if tag_name:
+            query = query.join(InventoryModel.tags).filter(
+                TagModel.name.ilike(f"%{tag_name}%")
+            ).distinct()
 
         query = query.options(
             joinedload(InventoryModel.collection),

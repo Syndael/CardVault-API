@@ -7,6 +7,7 @@ from app.schemas.product_condition_schema import ProductConditionSchema
 from app.schemas.product_schema import ProductSchema
 from app.schemas.purchase_item_schema import PurchaseItemSchema
 from app.schemas.purchase_schema import PurchaseSchema
+from app.schemas.tag_schema import TagSchema
 from app.schemas.type_schema import TypeSchema
 
 
@@ -33,6 +34,7 @@ class InventorySchema(Schema):
     purchase_item = fields.Nested(PurchaseItemSchema, dump_only=True)
     language = fields.Nested(LanguageSchema, dump_only=True)
     condition = fields.Nested(ProductConditionSchema, dump_only=True)
+    tags = fields.Nested(TagSchema, dump_only=True, many=True)
     product_image_url = fields.Method("get_product_image_url", dump_only=True)
     inventory_image_url = fields.Method("get_inventory_image_url", dump_only=True)
 
@@ -53,6 +55,7 @@ class ProductLiteSchema(Schema):
 class ProductTranslationLiteSchema(Schema):
     language_id = fields.Int()
     name = fields.Str()
+    name_alter = fields.Str(dump_only=True, allow_none=True)
 
 
 class CollectionLiteSchema(Schema):
@@ -84,6 +87,7 @@ class InventoryListSchema(Schema):
     extra_type = fields.Nested(TypeSchema, dump_only=True)
     language = fields.Nested(LanguageLiteSchema, dump_only=True)
     condition = fields.Nested(ConditionLiteSchema, dump_only=True)
+    tags = fields.Nested(TagSchema, dump_only=True, many=True)
     acquisition_price = fields.Method("get_acquisition_price", dump_only=True)
     product_image_url = fields.Method("get_product_image_url", dump_only=True)
     inventory_image_url = fields.Method("get_inventory_image_url", dump_only=True)

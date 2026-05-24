@@ -58,6 +58,12 @@ class InventoryModel(BaseModel):
         onupdate=func.current_timestamp()
     )
 
+    tags = db.relationship(
+        "TagModel",
+        secondary="inventory_tags",
+        lazy="selectin"
+    )
+
     product = db.relationship("ProductModel", backref="inventory", lazy=True)
     collection = db.relationship(
         "CollectionModel",

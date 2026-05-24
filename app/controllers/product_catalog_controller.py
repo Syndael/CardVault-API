@@ -74,11 +74,10 @@ AND (
 
 def format_name(name, name_alter):
     if name and name_alter:
-        return f"{name_alter} ({name})"
-    if name_alter:
-        return name_alter
-
-    return name
+        return f"{name} ({name_alter})"
+    if name:
+        return name
+    return name_alter or name
 
 
 @product_catalog_blueprint.route("/", methods=["GET"])
@@ -164,10 +163,7 @@ def get_products():
                 "collection_is_manual": row["collection_is_manual"] == 1,
                 "product_is_manual": row["product_is_manual"] == 1,
                 "is_verified": row["is_verified"] == 1,
-                "collection_name": format_name(
-                    row["collection_name"],
-                    row["collection_name_alter"]
-                ),
+                "collection_name": row["collection_name"],
                 "product_number": row["product_number"],
                 "product_name": format_name(
                     row["product_name"],
