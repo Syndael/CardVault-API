@@ -80,7 +80,7 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('sync.pokemon.products.api.base', 'https://api.tcgdex.net/v2'),
 ('sync.pokemon.products.card.type', 'POK'),
 ('sync.pokemon.products.migration.languages', 'en;es;ja;ko;de;'),
-('sync.pokemon.products.files.path', './../.files/products_images'),
+('sync.pokemon.products.img.path', './../.files/products_images'),
 ('sync.pokemon.products.img.path.pattern', '{card_type}/{collection_code}'),
 ('app.inventory.files.path', './../.files/inventory'),
 ('app.inventory.files.path.pattern', '{card_type}/{collection_code}/{product_number}/{inventory_id}'),

@@ -46,6 +46,17 @@ class CrudRepository:
             except ValueError:
                 pass
 
+        try:
+            purchase_id = request.args.get("purchase_id")
+        except RuntimeError:
+            purchase_id = None
+
+        if purchase_id is not None and hasattr(cls.model, "purchase_id"):
+            try:
+                query = query.filter(cls.model.purchase_id == int(purchase_id))
+            except ValueError:
+                pass
+
         return paginate_query(query, page, per_page)
 
     @classmethod
