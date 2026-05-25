@@ -1,4 +1,5 @@
 from flask import request, g
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.collection_model import CollectionModel
@@ -122,6 +123,49 @@ class InventoryRepository(CrudRepository):
             query = query.join(InventoryModel.tags).filter(
                 TagModel.name.ilike(f"%{tag_name}%")
             ).distinct()
+
+        try:
+            raw_sort = (request.args.get("sort") or "newest").strip()
+        except RuntimeError:
+            raw_sort = "newest"
+
+        query = query.order_by(None)
+        if raw_sort == "oldest":
+            query = query.order_by(InventoryModel.id.asc())
+        elif raw_sort == "name_collection":
+            pt_subq = (
+                select(ProductTranslationModel.name)
+                .where(ProductTranslationModel.product_id == ProductModel.id)
+                .order_by(ProductTranslationModel.id)
+                .limit(1)
+                .correlate(ProductModel)
+                .scalar_subquery()
+            )
+            if not _joined_product:
+                query = query.join(InventoryModel.product)
+                _joined_product = True
+            if not _joined_collection:
+                query = query.join(InventoryModel.collection)
+                _joined_collection = True
+            query = query.order_by(pt_subq, CollectionModel.code)
+        elif raw_sort == "collection_name":
+            pt_subq = (
+                select(ProductTranslationModel.name)
+                .where(ProductTranslationModel.product_id == ProductModel.id)
+                .order_by(ProductTranslationModel.id)
+                .limit(1)
+                .correlate(ProductModel)
+                .scalar_subquery()
+            )
+            if not _joined_product:
+                query = query.join(InventoryModel.product)
+                _joined_product = True
+            if not _joined_collection:
+                query = query.join(InventoryModel.collection)
+                _joined_collection = True
+            query = query.order_by(CollectionModel.code, pt_subq)
+        else:
+            query = query.order_by(InventoryModel.id.desc())
 
         query = query.options(
             joinedload(InventoryModel.collection),
