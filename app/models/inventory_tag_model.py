@@ -21,4 +21,4 @@ class InventoryTagModel(BaseModel):
     )
     created_at = db.Column(db.TIMESTAMP, server_default=func.current_timestamp())
 
-    tag = db.relationship("TagModel", lazy=True)
+    tag = db.relationship("TagModel", lazy=True, overlaps="tags")
