@@ -144,7 +144,7 @@ def download_manual_file():
     return jsonify(schema.dump(created)), 201
 
 
-@file_blueprint.route('/by-inventory/<int:inventory_id>', methods=['GET'])
+@file_blueprint.route('/by-inventory/<int:inventory_id>', methods=['GET'], strict_slashes=False)
 def get_inventory_files(inventory_id):
     from app.models.file_model import FileModel
     files = FileModel.query.filter_by(inventory_id=inventory_id).all()
@@ -152,7 +152,7 @@ def get_inventory_files(inventory_id):
     return jsonify(schema.dump(files))
 
 
-@file_blueprint.route('/by-purchase/<int:purchase_id>', methods=['GET'])
+@file_blueprint.route('/by-purchase/<int:purchase_id>', methods=['GET'], strict_slashes=False)
 def get_purchase_files(purchase_id):
     from app.models.file_model import FileModel
     files = FileModel.query.filter_by(purchase_id=purchase_id).all()
@@ -263,11 +263,12 @@ def upload_purchase_file():
         return jsonify({'message': 'Purchase not found'}), 404
 
     purchase_date = getattr(purchase, 'purchase_date', None)
-    if not purchase_date:
-        return jsonify({'message': 'Purchase date missing'}), 400
-
-    year = str(purchase_date.year)
-    month = f"{purchase_date.month:02d}"
+    if purchase_date:
+        year = str(purchase_date.year)
+        month = f"{purchase_date.month:02d}"
+    else:
+        year = "unknown"
+        month = "unknown"
 
     path_setting = SettingModel.query.filter_by(setting_key="app.purchase.files.path").first()
     base_dir = path_setting.setting_value if path_setting and path_setting.setting_value else "./../.files/purchases"
