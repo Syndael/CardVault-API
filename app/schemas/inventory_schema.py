@@ -66,11 +66,13 @@ class CollectionLiteSchema(Schema):
 class LanguageLiteSchema(Schema):
     id = fields.Int()
     name = fields.Str()
+    abbreviation = fields.Str()
 
 
 class ConditionLiteSchema(Schema):
     id = fields.Int()
     name = fields.Str()
+    abbreviation = fields.Str()
 
 
 class InventoryListSchema(Schema):
