@@ -142,7 +142,7 @@ CREATE INDEX idx_user_sessions_expires ON user_sessions(expires_at);
 CREATE TABLE purchases (
   id INT AUTO_INCREMENT PRIMARY KEY,
   entity_id INT NOT NULL,
-  purchase_date DATETIME NOT NULL,
+  purchase_date DATETIME NULL,
   total_amount DECIMAL(10,2) NULL,
   shipping_cost DECIMAL(10,2) DEFAULT 0,
   currency VARCHAR(10) DEFAULT 'EUR',

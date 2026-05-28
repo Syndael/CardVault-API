@@ -263,11 +263,12 @@ def upload_purchase_file():
         return jsonify({'message': 'Purchase not found'}), 404
 
     purchase_date = getattr(purchase, 'purchase_date', None)
-    if not purchase_date:
-        return jsonify({'message': 'Purchase date missing'}), 400
-
-    year = str(purchase_date.year)
-    month = f"{purchase_date.month:02d}"
+    if purchase_date:
+        year = str(purchase_date.year)
+        month = f"{purchase_date.month:02d}"
+    else:
+        year = "unknown"
+        month = "unknown"
 
     path_setting = SettingModel.query.filter_by(setting_key="app.purchase.files.path").first()
     base_dir = path_setting.setting_value if path_setting and path_setting.setting_value else "./../.files/purchases"

@@ -13,7 +13,7 @@ class PurchaseModel(BaseModel):
         db.ForeignKey("entities.id", ondelete="RESTRICT"),
         nullable=False
     )
-    purchase_date = db.Column(db.DateTime, nullable=False)
+    purchase_date = db.Column(db.DateTime, nullable=True)
     total_amount = db.Column(db.Numeric(10, 2))
     shipping_cost = db.Column(
         db.Numeric(10, 2),
