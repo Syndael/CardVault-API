@@ -1,5 +1,5 @@
 from flask import request, g
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.collection_model import CollectionModel
@@ -179,7 +179,7 @@ class InventoryRepository(CrudRepository):
             if not _joined_collection:
                 query = query.join(InventoryModel.collection)
                 _joined_collection = True
-            query = query.order_by(CollectionModel.code, ProductModel.product_number, pt_subq)
+            query = query.order_by(CollectionModel.code, func.length(ProductModel.product_number), ProductModel.product_number, pt_subq)
         else:
             query = query.order_by(InventoryModel.id.desc())
 
