@@ -10,6 +10,8 @@ from app.controllers.entity_controller import entity_blueprint
 from app.controllers.file_controller import file_blueprint
 from app.controllers.inventory_controller import inventory_blueprint
 from app.controllers.inventory_price_history_controller import inventory_price_history_blueprint
+from app.controllers.inventory_price_history_archive_controller import inventory_price_history_archive_blueprint
+from app.controllers.inventory_url_controller import inventory_url_blueprint
 from app.controllers.inventory_tag_controller import inventory_tag_blueprint
 from app.controllers.language_controller import language_blueprint
 from app.controllers.price_source_controller import price_source_blueprint
@@ -92,6 +94,8 @@ def create_app():
     register_protected(price_source_blueprint, "/api/price-sources")
     register_protected(product_price_tracking_blueprint, "/api/product-price-tracking")
     register_protected(inventory_price_history_blueprint, "/api/inventory-price-history")
+    register_protected(inventory_price_history_archive_blueprint, "/api/inventory-price-history-archive")
+    register_protected(inventory_url_blueprint, "/api/inventory-urls")
     register_protected(tag_blueprint, "/api/tags")
     register_protected(scheduled_task_blueprint, "/api/scheduled-tasks")
     register_protected(setting_blueprint, "/api/settings")

@@ -60,6 +60,28 @@ class CrudRepository:
                 pass
 
         try:
+            inventory_id = request.args.get("inventory_id")
+        except RuntimeError:
+            inventory_id = None
+
+        if inventory_id is not None and hasattr(cls.model, "inventory_id"):
+            try:
+                query = query.filter(cls.model.inventory_id == int(inventory_id))
+            except ValueError:
+                pass
+
+        try:
+            product_price_tracking_id = request.args.get("product_price_tracking_id")
+        except RuntimeError:
+            product_price_tracking_id = None
+
+        if product_price_tracking_id is not None and hasattr(cls.model, "product_price_tracking_id"):
+            try:
+                query = query.filter(cls.model.product_price_tracking_id == int(product_price_tracking_id))
+            except ValueError:
+                pass
+
+        try:
             name_alter = request.args.get("name_alter")
         except RuntimeError:
             name_alter = None

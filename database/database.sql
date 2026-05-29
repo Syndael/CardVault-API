@@ -335,6 +335,10 @@ CREATE TABLE inventory_price_history (
   inventory_id INT NOT NULL,
   product_price_tracking_id INT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
+  min_price DECIMAL(10,2) NULL,
+  max_price DECIMAL(10,2) NULL,
+  min_price_recorded_at TIMESTAMP NULL,
+  max_price_recorded_at TIMESTAMP NULL,
   recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_price_inventory
@@ -350,6 +354,33 @@ CREATE TABLE inventory_price_history (
 
 CREATE INDEX idx_history_inventory ON inventory_price_history(inventory_id);
 CREATE INDEX idx_history_recorded_at ON inventory_price_history(recorded_at);
+
+CREATE TABLE inventory_price_history_archive (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  inventory_id INT NOT NULL,
+  product_price_tracking_id INT NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  min_price DECIMAL(10,2) NULL,
+  max_price DECIMAL(10,2) NULL,
+  min_price_recorded_at TIMESTAMP NULL,
+  max_price_recorded_at TIMESTAMP NULL,
+  recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_price_archive_inventory
+    FOREIGN KEY (inventory_id)
+    REFERENCES inventory(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_price_archive_product
+    FOREIGN KEY (product_price_tracking_id)
+    REFERENCES product_price_tracking(id)
+    ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_archive_inventory ON inventory_price_history_archive(inventory_id);
+CREATE INDEX idx_archive_recorded_at ON inventory_price_history_archive(recorded_at);
+CREATE INDEX idx_archive_archived_at ON inventory_price_history_archive(archived_at);
 
 CREATE TABLE product_translations (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -462,3 +493,18 @@ CREATE TABLE task_executions (
   INDEX idx_executions_status_date (status, scheduled_date),
   INDEX idx_executions_task (scheduled_task_id)
 );
+
+CREATE TABLE inventory_urls (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  inventory_id INT NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  name VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_urls_inventory
+    FOREIGN KEY (inventory_id)
+    REFERENCES inventory(id)
+    ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_inventory_urls_inventory ON inventory_urls(inventory_id);

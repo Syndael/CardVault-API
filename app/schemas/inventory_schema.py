@@ -91,6 +91,9 @@ class InventoryListSchema(Schema):
     condition = fields.Nested(ConditionLiteSchema, dump_only=True)
     tags = fields.Nested(TagSchema, dump_only=True, many=True)
     acquisition_price = fields.Method("get_acquisition_price", dump_only=True)
+    current_price = fields.Method("get_current_price", dump_only=True, allow_none=True)
+    min_price = fields.Method("get_min_price", dump_only=True, allow_none=True)
+    max_price = fields.Method("get_max_price", dump_only=True, allow_none=True)
     product_image_url = fields.Method("get_product_image_url", dump_only=True)
     inventory_image_url = fields.Method("get_inventory_image_url", dump_only=True)
 
@@ -106,3 +109,12 @@ class InventoryListSchema(Schema):
         if obj.purchase and obj.purchase.total_amount is not None:
             return float(obj.purchase.total_amount)
         return None
+
+    def get_current_price(self, obj):
+        return getattr(obj, "_current_price", None)
+
+    def get_min_price(self, obj):
+        return getattr(obj, "_min_price", None)
+
+    def get_max_price(self, obj):
+        return getattr(obj, "_max_price", None)

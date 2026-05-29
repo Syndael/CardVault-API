@@ -4,7 +4,7 @@ from flask import request
 
 DEFAULT_PAGE = 1
 DEFAULT_PER_PAGE = 20
-MAX_PER_PAGE = 100
+MAX_PER_PAGE = 500
 
 
 def get_pagination_params():

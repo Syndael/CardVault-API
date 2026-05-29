@@ -4,8 +4,8 @@ from app.database.session import db
 from app.models.base import BaseModel
 
 
-class InventoryPriceHistoryModel(BaseModel):
-    __tablename__ = "inventory_price_history"
+class InventoryPriceHistoryArchiveModel(BaseModel):
+    __tablename__ = "inventory_price_history_archive"
 
     id = db.Column(db.BigInteger, primary_key=True)
     inventory_id = db.Column(
@@ -27,14 +27,18 @@ class InventoryPriceHistoryModel(BaseModel):
         db.TIMESTAMP,
         server_default=func.current_timestamp()
     )
+    archived_at = db.Column(
+        db.TIMESTAMP,
+        server_default=func.current_timestamp()
+    )
 
     inventory = db.relationship(
         "InventoryModel",
-        backref="price_history",
+        backref="price_history_archive",
         lazy=True
     )
     product_price_tracking = db.relationship(
         "ProductPriceTrackingModel",
-        backref="price_history",
+        backref="price_history_archive",
         lazy=True
     )

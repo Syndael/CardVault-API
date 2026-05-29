@@ -24,6 +24,34 @@ def _can_access(entity):
     return entity.user_id == user.id
 
 
+def _attach_price_data(items):
+    inv_ids = [item.id for item in items if item.id]
+    if not inv_ids:
+        return
+    ph = ",".join([f":iid_{i}" for i in range(len(inv_ids))])
+    params = {f"iid_{i}": iid for i, iid in enumerate(inv_ids)}
+    rows = db.session.execute(
+        text(f"""
+            SELECT iph.inventory_id, iph.price, iph.min_price, iph.max_price
+            FROM inventory_price_history iph
+            INNER JOIN (
+                SELECT inventory_id, MAX(recorded_at) AS max_ra
+                FROM inventory_price_history
+                WHERE inventory_id IN ({ph})
+                GROUP BY inventory_id
+            ) latest ON iph.inventory_id = latest.inventory_id AND iph.recorded_at = latest.max_ra
+        """),
+        params
+    ).mappings().all()
+    for row in rows:
+        inv_id = row["inventory_id"]
+        item = next((it for it in items if it.id == inv_id), None)
+        if item:
+            item._current_price = float(row["price"]) if row["price"] is not None else None
+            item._min_price = float(row["min_price"]) if row["min_price"] is not None else None
+            item._max_price = float(row["max_price"]) if row["max_price"] is not None else None
+
+
 def _attach_image_urls(items):
     product_items = []
     inv_item_map = {}
@@ -92,6 +120,7 @@ class InventoryService(CrudService):
         items = result.get("items", [])
         if items:
             _attach_image_urls(items)
+            _attach_price_data(items)
         return result
 
     @classmethod

@@ -1,12 +1,12 @@
-from app.models.inventory_price_history_model import (
-    InventoryPriceHistoryModel
+from app.models.inventory_price_history_archive_model import (
+    InventoryPriceHistoryArchiveModel
 )
 from app.repositories.crud_repository import CrudRepository
 
 
-class InventoryPriceHistoryRepository(CrudRepository):
-    model = InventoryPriceHistoryModel
-    order_by = (InventoryPriceHistoryModel.id,)
+class InventoryPriceHistoryArchiveRepository(CrudRepository):
+    model = InventoryPriceHistoryArchiveModel
+    order_by = (InventoryPriceHistoryArchiveModel.id,)
     create_fields = (
         "inventory_id",
         "product_price_tracking_id",
