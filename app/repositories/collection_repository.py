@@ -26,6 +26,15 @@ class CollectionRepository:
             return query.order_by(
                 CollectionModel.card_type_id, CollectionModel.code, CollectionModel.is_manual
             )
+        if sort_by == "code":
+            return query.order_by(CollectionModel.code)
+        if sort_by == "type_code":
+            return query.order_by(CollectionModel.card_type_id, CollectionModel.code)
+        if sort_by == "name":
+            return query.outerjoin(
+                CollectionTranslationModel,
+                CollectionModel.id == CollectionTranslationModel.collection_id
+            ).order_by(CollectionTranslationModel.name).distinct(CollectionModel.id)
         return query.order_by(CollectionModel.id)
 
     @staticmethod
