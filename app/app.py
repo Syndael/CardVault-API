@@ -15,6 +15,7 @@ from app.controllers.inventory_url_controller import inventory_url_blueprint
 from app.controllers.inventory_tag_controller import inventory_tag_blueprint
 from app.controllers.language_controller import language_blueprint
 from app.controllers.price_source_controller import price_source_blueprint
+from app.controllers.proxy_controller import proxy_blueprint
 from app.controllers.product_catalog_controller import product_catalog_blueprint
 from app.controllers.product_condition_controller import product_condition_blueprint
 from app.controllers.product_controller import product_blueprint
@@ -81,6 +82,7 @@ def create_app():
     register_protected(collection_translation_blueprint, "/api/collection-translations")
     register_protected(language_blueprint, "/api/languages")
     register_protected(collection_blueprint, "/api/collections")
+    register_protected(proxy_blueprint, "/api/proxy")
     register_protected(product_blueprint, "/api/products")
     register_protected(product_catalog_blueprint, "/api/product-catalog")
     register_protected(product_translation_blueprint, "/api/product-translations")
