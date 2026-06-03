@@ -20,10 +20,13 @@ def proxy_external():
                 error_body = resp.json()
             except ValueError:
                 error_body = {"message": resp.text[:500]}
-            return jsonify({"found": False, "status": resp.status_code, "error": error_body}), 200
+            return jsonify({"found": False, "requested_url": url, "status": resp.status_code, "error": error_body}), 200
         try:
-            return jsonify(resp.json()), 200
+            data = resp.json()
+            if isinstance(data, dict):
+                data["requested_url"] = url
+            return jsonify(data), 200
         except ValueError:
-            return jsonify({"found": False, "message": "Invalid JSON from external API", "status": resp.status_code}), 200
+            return jsonify({"found": False, "requested_url": url, "message": "Invalid JSON from external API", "status": resp.status_code}), 200
     except requests.RequestException as e:
-        return jsonify({"found": False, "message": "Proxy error", "error": str(e)}), 200
+        return jsonify({"found": False, "requested_url": url, "message": "Proxy error", "error": str(e)}), 200

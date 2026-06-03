@@ -1,11 +1,15 @@
 from flask import request, g
-from sqlalchemy import func, select
+from sqlalchemy import and_, exists, func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.collection_model import CollectionModel
 from app.models.inventory_model import InventoryModel
+from app.models.inventory_price_history_model import InventoryPriceHistoryModel
+from app.models.inventory_tag_model import InventoryTagModel
+from app.models.language_model import LanguageModel
 from app.models.product_model import ProductModel
 from app.models.product_translation_model import ProductTranslationModel
+from app.models.purchase_item_model import PurchaseItemModel
 from app.models.tag_model import TagModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
@@ -120,9 +124,16 @@ class InventoryRepository(CrudRepository):
         except RuntimeError:
             tag_name = ""
         if tag_name:
-            query = query.join(InventoryModel.tags).filter(
-                TagModel.name.ilike(f"%{tag_name}%")
-            ).distinct()
+            tag_names = [t.strip() for t in tag_name.split(",") if t.strip()]
+            for tn in tag_names:
+                query = query.filter(
+                    exists().select_from(InventoryTagModel).join(TagModel).where(
+                        and_(
+                            InventoryTagModel.inventory_id == InventoryModel.id,
+                            TagModel.name.ilike(f"%{tn}%")
+                        )
+                    )
+                )
 
         try:
             raw_sort = (request.args.get("sort") or "newest").strip()
@@ -180,6 +191,83 @@ class InventoryRepository(CrudRepository):
                 query = query.join(InventoryModel.collection)
                 _joined_collection = True
             query = query.order_by(CollectionModel.code, func.length(ProductModel.product_number), ProductModel.product_number, pt_subq)
+        elif raw_sort == "price_collection_product_number_name":
+            latest_price_subq = (
+                select(InventoryPriceHistoryModel.price)
+                .where(InventoryPriceHistoryModel.inventory_id == InventoryModel.id)
+                .order_by(InventoryPriceHistoryModel.recorded_at.desc())
+                .limit(1)
+                .correlate(InventoryModel)
+                .scalar_subquery()
+            )
+            pt_subq = (
+                select(ProductTranslationModel.name)
+                .where(ProductTranslationModel.product_id == ProductModel.id)
+                .order_by(ProductTranslationModel.id)
+                .limit(1)
+                .correlate(ProductModel)
+                .scalar_subquery()
+            )
+            if not _joined_product:
+                query = query.join(InventoryModel.product)
+                _joined_product = True
+            if not _joined_collection:
+                query = query.join(InventoryModel.collection)
+                _joined_collection = True
+            query = query.order_by(latest_price_subq.is_(None), latest_price_subq.desc(), CollectionModel.code, func.length(ProductModel.product_number), ProductModel.product_number, pt_subq)
+        elif raw_sort == "language_collection_product_number_name":
+            lang_subq = (
+                select(LanguageModel.name)
+                .where(LanguageModel.id == InventoryModel.language_id)
+                .correlate(InventoryModel)
+                .scalar_subquery()
+            )
+            pt_subq = (
+                select(ProductTranslationModel.name)
+                .where(ProductTranslationModel.product_id == ProductModel.id)
+                .order_by(ProductTranslationModel.id)
+                .limit(1)
+                .correlate(ProductModel)
+                .scalar_subquery()
+            )
+            if not _joined_product:
+                query = query.join(InventoryModel.product)
+                _joined_product = True
+            if not _joined_collection:
+                query = query.join(InventoryModel.collection)
+                _joined_collection = True
+            query = query.order_by(lang_subq.is_(None), lang_subq, CollectionModel.code, func.length(ProductModel.product_number), ProductModel.product_number, pt_subq)
+        elif raw_sort == "difference_collection_product_number_name":
+            latest_price_subq = (
+                select(InventoryPriceHistoryModel.price)
+                .where(InventoryPriceHistoryModel.inventory_id == InventoryModel.id)
+                .order_by(InventoryPriceHistoryModel.recorded_at.desc())
+                .limit(1)
+                .correlate(InventoryModel)
+                .scalar_subquery()
+            )
+            acq_price_subq = (
+                select(PurchaseItemModel.unit_price)
+                .where(PurchaseItemModel.id == InventoryModel.purchase_item_id)
+                .correlate(InventoryModel)
+                .scalar_subquery()
+            )
+            pt_subq = (
+                select(ProductTranslationModel.name)
+                .where(ProductTranslationModel.product_id == ProductModel.id)
+                .order_by(ProductTranslationModel.id)
+                .limit(1)
+                .correlate(ProductModel)
+                .scalar_subquery()
+            )
+            if not _joined_product:
+                query = query.join(InventoryModel.product)
+                _joined_product = True
+            if not _joined_collection:
+                query = query.join(InventoryModel.collection)
+                _joined_collection = True
+            diff = latest_price_subq - acq_price_subq
+            query = query.order_by(diff.is_(None), diff.desc(), CollectionModel.code, func.length(ProductModel.product_number), ProductModel.product_number, pt_subq)
         else:
             query = query.order_by(InventoryModel.id.desc())
 
