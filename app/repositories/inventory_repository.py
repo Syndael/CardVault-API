@@ -127,10 +127,15 @@ class InventoryRepository(CrudRepository):
             tag_names = [t.strip() for t in tag_name.split(",") if t.strip()]
             for tn in tag_names:
                 query = query.filter(
-                    exists().select_from(InventoryTagModel).join(TagModel).where(
-                        and_(
-                            InventoryTagModel.inventory_id == InventoryModel.id,
-                            TagModel.name.ilike(f"%{tn}%")
+                    exists(
+                        select(1)
+                        .select_from(InventoryTagModel)
+                        .join(TagModel)
+                        .where(
+                            and_(
+                                InventoryTagModel.inventory_id == InventoryModel.id,
+                                TagModel.name.ilike(f"%{tn}%")
+                            )
                         )
                     )
                 )

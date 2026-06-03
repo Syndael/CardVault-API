@@ -11,6 +11,13 @@ from app.utils.pagination import get_pagination_params
 
 product_catalog_blueprint = Blueprint("product_catalog", __name__)
 
+def _search_clause(search_terms):
+    if not search_terms:
+        return ""
+    field_sql = "(c.code LIKE :q_{0} OR p.product_number LIKE :q_{0} OR pt.name LIKE :q_{0} OR pt.name_alter LIKE :q_{0} OR ct.name LIKE :q_{0} OR ct.name_alter LIKE :q_{0})"
+    clauses = [field_sql.format(i) for i in range(len(search_terms))]
+    return "AND " + " AND ".join(clauses)
+
 CATALOG_FROM_SQL = """
 FROM products p
 INNER JOIN collections c ON c.id = p.collection_id
@@ -41,15 +48,7 @@ LEFT JOIN files f
         ORDER BY (lfile.priority_order IS NULL), lfile.priority_order, f2.id
         LIMIT 1
     )
-WHERE (
-    :search = ''
-    OR c.code LIKE :search_like
-    OR p.product_number LIKE :search_like
-    OR pt.name LIKE :search_like
-    OR pt.name_alter LIKE :search_like
-    OR ct.name LIKE :search_like
-    OR ct.name_alter LIKE :search_like
-)
+WHERE 1=1
 AND (:is_verified = -1 OR p.is_verified = :is_verified)
 AND (:is_manual = -1 OR c.is_manual = :is_manual)
 AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
@@ -84,7 +83,8 @@ def format_name(name, name_alter):
 @auth.require_role("product_read", "admin")
 def get_products():
     page, per_page = get_pagination_params()
-    search = (request.args.get("q") or "").strip()
+    raw_q = (request.args.get("q") or "").strip()
+    search_terms = [t for t in raw_q.split() if t]
     raw_verified = request.args.get("is_verified")
     raw_manual = request.args.get("is_manual")
     raw_type_id = request.args.get("product_type_id")
@@ -93,8 +93,6 @@ def get_products():
     raw_prod_number = (request.args.get("product_number") or "").strip()
     raw_prod_name = (request.args.get("product_name") or "").strip()
     params = {
-        "search": search,
-        "search_like": f"%{search}%",
         "is_verified": int(raw_verified) if raw_verified in ("0", "1") else -1,
         "is_manual": int(raw_manual) if raw_manual in ("0", "1") else -1,
         "product_type_id": int(raw_type_id) if raw_type_id else -1,
@@ -108,9 +106,12 @@ def get_products():
         "limit": per_page,
         "offset": (page - 1) * per_page
     }
+    for i, term in enumerate(search_terms):
+        params[f"q_{i}"] = f"%{term}%"
 
+    search_sql = _search_clause(search_terms)
     total = db.session.execute(
-        text(f"SELECT COUNT(*) {CATALOG_FROM_SQL}"),
+        text(f"SELECT COUNT(*) {CATALOG_FROM_SQL} {search_sql}"),
         params
     ).scalar()
     rows = db.session.execute(
@@ -136,7 +137,7 @@ def get_products():
                     ORDER BY ppt.id DESC
                     LIMIT 1
                 ) AS tracker_url
-            {CATALOG_FROM_SQL}
+            {CATALOG_FROM_SQL} {search_sql}
             ORDER BY
                 c.code,
                 c.is_manual,
