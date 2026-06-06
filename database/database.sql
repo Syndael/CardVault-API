@@ -60,6 +60,7 @@ CREATE INDEX idx_products_collection ON products(collection_id);
 CREATE TABLE entities (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
+  url VARCHAR(500),
   entity_type INT NOT NULL,
   parent_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -147,12 +148,25 @@ CREATE TABLE purchases (
   shipping_cost DECIMAL(10,2) DEFAULT 0,
   currency VARCHAR(10) DEFAULT 'EUR',
   external_reference VARCHAR(255) NULL,
+  tracking_code VARCHAR(255) NULL,
+  shipping_status_id INT NULL,
+  shipping_company_id INT NULL,
   notes TEXT,
   user_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_purchases_entity
     FOREIGN KEY (entity_id)
+    REFERENCES entities(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_purchases_shipping_status
+    FOREIGN KEY (shipping_status_id)
+    REFERENCES types(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_purchases_shipping_company
+    FOREIGN KEY (shipping_company_id)
     REFERENCES entities(id)
     ON DELETE RESTRICT
 );
@@ -401,7 +415,9 @@ CREATE TABLE product_translations (
     ON DELETE RESTRICT,
 
   CONSTRAINT uq_product_lang
-    UNIQUE (product_id, language_id)
+    UNIQUE (product_id, language_id),
+
+  FULLTEXT INDEX ft_product_translations_name (name, name_alter)
 );
 
 CREATE TABLE collection_translations (
@@ -423,7 +439,9 @@ CREATE TABLE collection_translations (
     ON DELETE RESTRICT,
 
   CONSTRAINT uq_collection_lang
-    UNIQUE (collection_id, language_id)
+    UNIQUE (collection_id, language_id),
+
+  FULLTEXT INDEX ft_collection_translations_name (name, name_alter)
 );
 
 CREATE TABLE settings (
@@ -508,3 +526,6 @@ CREATE TABLE inventory_urls (
 );
 
 CREATE INDEX idx_inventory_urls_inventory ON inventory_urls(inventory_id);
+CREATE INDEX idx_collections_code_manual ON collections(code, is_manual);
+CREATE INDEX idx_products_type_collection ON products(product_type_id, collection_id);
+CREATE INDEX idx_files_product_language_id ON files(product_id, language_id, id);

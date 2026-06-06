@@ -14,12 +14,17 @@ INSERT INTO types (type, name, short_name) VALUES
 ('card', 'Yu-Gi-Oh!', 'YUG');
 
 INSERT INTO types (type, name) VALUES
-('file', 'image'),
-('file', 'invoice'),
-('file', 'document'),
 ('entity', 'store'),
 ('entity', 'person'),
-('entity', 'platform');
+('entity', 'platform'),
+('entity', 'shipping_company');
+
+INSERT INTO types (type, name) VALUES
+('p_status', 'Reservado'),
+('p_status', 'Pedido'),
+('p_status', 'Enviado'),
+('p_status', 'Terminado'),
+('p_status', 'Cancelado');
 
 INSERT INTO price_sources (
   name,

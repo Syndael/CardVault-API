@@ -296,12 +296,16 @@ def upload_purchase_file():
     except Exception as e:
         return jsonify({'message': 'Error saving file', 'error': str(e)}), 500
 
+    file_type = request.form.get('file_type', 'image')
+    type_row = TypeModel.query.filter_by(type="file", name=file_type).first()
+    file_type_id = type_row.id if type_row else _get_image_type_id()
+
     payload = {
         'purchase_id': purchase_id,
         'original_name': original_name,
         'stored_name': stored_name,
         'file_path': os.path.join(base_dir, sub_dir, stored_name),
-        'file_type_id': _get_image_type_id(),
+        'file_type_id': file_type_id,
         'file_size': os.path.getsize(target_path)
     }
 

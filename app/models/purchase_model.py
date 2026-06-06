@@ -24,6 +24,15 @@ class PurchaseModel(BaseModel):
         server_default="EUR"
     )
     external_reference = db.Column(db.String(255))
+    tracking_code = db.Column(db.String(255))
+    shipping_status_id = db.Column(
+        db.Integer,
+        db.ForeignKey("types.id", ondelete="RESTRICT")
+    )
+    shipping_company_id = db.Column(
+        db.Integer,
+        db.ForeignKey("entities.id", ondelete="RESTRICT")
+    )
     notes = db.Column(db.Text)
     user_id = db.Column(
         db.Integer,
@@ -37,7 +46,18 @@ class PurchaseModel(BaseModel):
 
     entity = db.relationship(
         "EntityModel",
+        foreign_keys=[entity_id],
         backref="purchases",
         lazy=True
     )
     user = db.relationship("UserModel", backref="purchases", lazy=True)
+    shipping_status = db.relationship(
+        "TypeModel",
+        foreign_keys=[shipping_status_id],
+        lazy=True
+    )
+    shipping_company = db.relationship(
+        "EntityModel",
+        foreign_keys=[shipping_company_id],
+        lazy=True
+    )

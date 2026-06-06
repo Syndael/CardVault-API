@@ -1,5 +1,7 @@
 import mimetypes
 import os
+import re
+from io import BytesIO
 from math import ceil
 
 from flask import Blueprint, g, jsonify, request, send_file, make_response
@@ -9,50 +11,115 @@ import app.auth as auth
 from app.database.session import db
 from app.utils.pagination import get_pagination_params
 
+_FT_SPECIAL = re.compile(r'[+\-~*()"@><]')
+
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
 product_catalog_blueprint = Blueprint("product_catalog", __name__)
 
 def _search_clause(search_terms):
     if not search_terms:
-        return ""
-    field_sql = "(c.code LIKE :q_{0} OR p.product_number LIKE :q_{0} OR pt.name LIKE :q_{0} OR pt.name_alter LIKE :q_{0} OR ct.name LIKE :q_{0} OR ct.name_alter LIKE :q_{0})"
-    clauses = [field_sql.format(i) for i in range(len(search_terms))]
-    return "AND " + " AND ".join(clauses)
+        return "", False
 
-CATALOG_FROM_SQL = """
+    like_clauses = []
+    for i in range(len(search_terms)):
+        like_clauses.append(f"c.code LIKE :q_{i} OR p.product_number LIKE :q_{i}")
+
+    clean = [_FT_SPECIAL.sub(" ", t).strip() for t in search_terms]
+    clean = [t for t in clean if t]
+
+    parts = []
+    has_ft = False
+    if clean:
+        has_ft = True
+        parts.append(
+            "EXISTS (SELECT 1 FROM product_translations pt_ft "
+            "WHERE pt_ft.product_id = p.id "
+            "AND MATCH(pt_ft.name, pt_ft.name_alter) AGAINST(:ft_q IN BOOLEAN MODE))"
+        )
+        parts.append(
+            "EXISTS (SELECT 1 FROM collection_translations ct_ft "
+            "WHERE ct_ft.collection_id = c.id "
+            "AND MATCH(ct_ft.name, ct_ft.name_alter) AGAINST(:ft_q IN BOOLEAN MODE))"
+        )
+
+    if like_clauses:
+        parts.append(f"({' OR '.join(like_clauses)})")
+
+    return "AND (" + " OR ".join(parts) + ")", has_ft
+
+CATALOG_BASE_FROM = """
 FROM products p
 INNER JOIN collections c ON c.id = p.collection_id
-LEFT JOIN product_translations pt
-    ON pt.id = (
-        SELECT pt2.id
-        FROM product_translations pt2
-        INNER JOIN languages l2 ON l2.id = pt2.language_id
-        WHERE pt2.product_id = p.id
-        ORDER BY l2.priority_order, l2.id, pt2.id
-        LIMIT 1
-    )
-LEFT JOIN collection_translations ct
-    ON ct.id = (
-        SELECT ct2.id
-        FROM collection_translations ct2
-        INNER JOIN languages l3 ON l3.id = ct2.language_id
-        WHERE ct2.collection_id = c.id
-        ORDER BY l3.priority_order, l3.id, ct2.id
-        LIMIT 1
-    )
-LEFT JOIN files f
-    ON f.id = (
-        SELECT f2.id
-        FROM files f2
-        LEFT JOIN languages lfile ON lfile.id = f2.language_id
-        WHERE f2.product_id = p.id
-        ORDER BY (lfile.priority_order IS NULL), lfile.priority_order, f2.id
-        LIMIT 1
-    )
+"""
+
+CATALOG_TEXT_JOINS = """
+LEFT JOIN (
+    SELECT pt2.id, pt2.product_id, pt2.name, pt2.name_alter,
+           ROW_NUMBER() OVER (
+               PARTITION BY pt2.product_id
+               ORDER BY l2.priority_order, l2.id, pt2.id
+           ) AS rn
+    FROM product_translations pt2
+    INNER JOIN languages l2 ON l2.id = pt2.language_id
+    WHERE (:product_type_id = -1) OR (pt2.product_id IN (
+        SELECT id FROM products WHERE product_type_id = :product_type_id
+    ))
+) pt ON pt.product_id = p.id AND pt.rn = 1
+LEFT JOIN (
+    SELECT ct2.id, ct2.collection_id, ct2.name, ct2.name_alter,
+           ROW_NUMBER() OVER (
+               PARTITION BY ct2.collection_id
+               ORDER BY l3.priority_order, l3.id, ct2.id
+           ) AS rn
+    FROM collection_translations ct2
+    INNER JOIN languages l3 ON l3.id = ct2.language_id
+    WHERE (:product_type_id = -1) OR (ct2.collection_id IN (
+        SELECT DISTINCT p2.collection_id FROM products p2
+        WHERE p2.product_type_id = :product_type_id
+    ))
+) ct ON ct.collection_id = c.id AND ct.rn = 1
+"""
+
+CATALOG_FILES_JOIN = """
+LEFT JOIN (
+    SELECT f2.id, f2.product_id,
+           ROW_NUMBER() OVER (
+               PARTITION BY f2.product_id
+               ORDER BY (lfile.priority_order IS NULL), lfile.priority_order, f2.id
+           ) AS rn
+    FROM files f2
+    LEFT JOIN languages lfile ON lfile.id = f2.language_id
+    WHERE (:product_type_id = -1) OR (f2.product_id IN (
+        SELECT id FROM products WHERE product_type_id = :product_type_id
+    ))
+) f ON f.product_id = p.id AND f.rn = 1
+"""
+
+CATALOG_TRACKER_JOIN = """
+LEFT JOIN (
+    SELECT ppt.product_id, ppt.url,
+           ROW_NUMBER() OVER (
+               PARTITION BY ppt.product_id
+               ORDER BY ppt.id DESC
+           ) AS rn
+    FROM product_price_tracking ppt
+    WHERE (:product_type_id = -1) OR (ppt.product_id IN (
+        SELECT id FROM products WHERE product_type_id = :product_type_id
+    ))
+) tracker ON tracker.product_id = p.id AND tracker.rn = 1
+"""
+
+CATALOG_WHERE = """
 WHERE 1=1
 AND (:is_verified = -1 OR p.is_verified = :is_verified)
 AND (:is_manual = -1 OR c.is_manual = :is_manual)
 AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
-AND (:collection_code = '' OR c.code LIKE :collection_code_like)
+AND (:collection_code = '' OR c.code = :collection_code)
 AND (:product_number = '' OR p.product_number LIKE :product_number_like)
 AND (:product_name = '' OR pt.name LIKE :product_name_like OR pt.name_alter LIKE :product_name_like)
 AND (
@@ -69,6 +136,13 @@ AND (
     )
 )
 """
+
+CATALOG_SELECT_FROM = (
+    CATALOG_BASE_FROM
+    + CATALOG_TEXT_JOINS
+    + CATALOG_FILES_JOIN
+    + CATALOG_TRACKER_JOIN
+)
 
 
 def format_name(name, name_alter):
@@ -98,7 +172,6 @@ def get_products():
         "product_type_id": int(raw_type_id) if raw_type_id else -1,
         "pending_sync": 1 if raw_pending == "1" else 0,
         "collection_code": raw_col_code,
-        "collection_code_like": f"%{raw_col_code}%",
         "product_number": raw_prod_number,
         "product_number_like": f"%{raw_prod_number}%",
         "product_name": raw_prod_name,
@@ -109,11 +182,77 @@ def get_products():
     for i, term in enumerate(search_terms):
         params[f"q_{i}"] = f"%{term}%"
 
-    search_sql = _search_clause(search_terms)
-    total = db.session.execute(
-        text(f"SELECT COUNT(*) {CATALOG_FROM_SQL} {search_sql}"),
-        params
-    ).scalar()
+    search_sql, has_ft = _search_clause(search_terms)
+    if has_ft:
+        clean = [_FT_SPECIAL.sub(" ", t).strip() for t in search_terms]
+        clean = [t for t in clean if t]
+        params["ft_q"] = " ".join(f"+{t}" for t in clean)
+
+    has_text_filters = bool(search_terms) or bool(raw_prod_name)
+
+    # COUNT query: skip window-function joins when possible
+    if search_terms:
+        total = db.session.execute(
+            text(f"""
+                SELECT COUNT(*)
+                FROM products p
+                INNER JOIN collections c ON c.id = p.collection_id
+                WHERE 1=1
+                AND (:is_verified = -1 OR p.is_verified = :is_verified)
+                AND (:is_manual = -1 OR c.is_manual = :is_manual)
+                AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
+                AND (:collection_code = '' OR c.code = :collection_code)
+                AND (:product_number = '' OR p.product_number LIKE :product_number_like)
+                AND (
+                    :pending_sync = 0
+                    OR (
+                        c.is_manual = 0
+                        AND (
+                            p.force_download = 1
+                            OR NOT EXISTS (
+                                SELECT 1 FROM product_translations pt2
+                                WHERE pt2.product_id = p.id
+                            )
+                        )
+                    )
+                )
+                {search_sql}
+            """),
+            params
+        ).scalar()
+    elif raw_prod_name:
+        total = db.session.execute(
+            text(f"SELECT COUNT(*) {CATALOG_SELECT_FROM} {CATALOG_WHERE}"),
+            params
+        ).scalar()
+    else:
+        total = db.session.execute(
+            text(f"""
+                SELECT COUNT(*)
+                {CATALOG_BASE_FROM}
+                WHERE 1=1
+                AND (:is_verified = -1 OR p.is_verified = :is_verified)
+                AND (:is_manual = -1 OR c.is_manual = :is_manual)
+                AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
+                AND (:collection_code = '' OR c.code = :collection_code)
+                AND (:product_number = '' OR p.product_number LIKE :product_number_like)
+                AND (
+                    :pending_sync = 0
+                    OR (
+                        c.is_manual = 0
+                        AND (
+                            p.force_download = 1
+                            OR NOT EXISTS (
+                                SELECT 1 FROM product_translations pt2
+                                WHERE pt2.product_id = p.id
+                            )
+                        )
+                    )
+                )
+            """),
+            params
+        ).scalar()
+
     rows = db.session.execute(
         text(
             f"""
@@ -130,14 +269,8 @@ def get_products():
                 pt.name_alter AS product_name_alter,
                 CAST(p.is_verified AS UNSIGNED) AS is_verified,
                 f.id AS file_id,
-                (
-                    SELECT ppt.url
-                    FROM product_price_tracking ppt
-                    WHERE ppt.product_id = p.id
-                    ORDER BY ppt.id DESC
-                    LIMIT 1
-                ) AS tracker_url
-            {CATALOG_FROM_SQL} {search_sql}
+                tracker.url AS tracker_url
+            {CATALOG_SELECT_FROM} {CATALOG_WHERE} {search_sql}
             ORDER BY
                 c.code,
                 c.is_manual,
@@ -251,20 +384,39 @@ def get_file_content(file_id):
     if not mime_type:
         mime_type = "application/octet-stream"
 
-    # Serve the file inline (not forced attachment). The blueprint is protected
-    # so Authorization is required; CORS headers are set globally in app.after_request.
-    # Disable conditional responses to avoid accidental 304 Not Modified replies
-    # when clients use conditional headers — the frontend expects a response
-    # body to create a blob URL. Also set Cache-Control to avoid browser
-    # revalidation for protected resources.
+    # Check if a specific size is requested (responsive images)
+    size = request.args.get("size")
+    if size and HAS_PIL and mime_type and mime_type.startswith("image/"):
+        try:
+            img = Image.open(resolved_path)
+            width_map = {"sm": 200, "md": 400}
+            target_width = width_map.get(size)
+            if target_width and img.width > target_width:
+                ratio = target_width / img.width
+                target_height = int(img.height * ratio)
+                img = img.resize((target_width, target_height), Image.LANCZOS)
+                buf = BytesIO()
+                fmt = img.format or "JPEG"
+                img.save(buf, fmt, quality=85)
+                buf.seek(0)
+                resp = send_file(
+                    buf,
+                    download_name=row["original_name"],
+                    as_attachment=False,
+                    mimetype=mime_type,
+                )
+                resp.headers['Cache-Control'] = 'public, max-age=86400'
+                return resp
+        except Exception:
+            pass
+
     resp = send_file(
         resolved_path,
         download_name=row["original_name"],
         as_attachment=False,
         mimetype=mime_type,
-        conditional=False,
     )
-    resp.headers['Cache-Control'] = 'no-store'
+    resp.headers['Cache-Control'] = 'public, max-age=86400'
     return resp
 
 

@@ -1,5 +1,8 @@
+from sqlalchemy.orm import subqueryload
+
 from flask import request, g
 
+from app.models.file_model import FileModel
 from app.models.purchase_model import PurchaseModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
@@ -26,6 +29,9 @@ class PurchaseRepository(CrudRepository):
         "shipping_cost",
         "currency",
         "external_reference",
+        "tracking_code",
+        "shipping_status_id",
+        "shipping_company_id",
         "user_id",
         "notes"
     )
@@ -33,7 +39,9 @@ class PurchaseRepository(CrudRepository):
 
     @classmethod
     def get_paginated(cls, page, per_page):
-        query = cls.model.query.order_by(*cls.order_by)
+        query = cls.model.query.options(
+            subqueryload(cls.model.files).subqueryload(FileModel.file_type)
+        ).order_by(*cls.order_by)
         if not _is_admin():
             user = getattr(g, "current_user", None)
             if user:
