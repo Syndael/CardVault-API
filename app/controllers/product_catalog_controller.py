@@ -27,7 +27,7 @@ def _search_clause(search_terms):
 
     like_clauses = []
     for i in range(len(search_terms)):
-        like_clauses.append(f"c.code LIKE :q_{i} OR p.product_number LIKE :q_{i}")
+        like_clauses.append(f"(c.code LIKE :q_{i} OR p.product_number LIKE :q_{i} OR pt.name LIKE :q_{i})")
 
     clean = [_FT_SPECIAL.sub(" ", t).strip() for t in search_terms]
     clean = [t for t in clean if t]
@@ -48,7 +48,7 @@ def _search_clause(search_terms):
         )
 
     if like_clauses:
-        parts.append(f"({' OR '.join(like_clauses)})")
+        parts.append(f"({' AND '.join(like_clauses)})")
 
     return "AND (" + " OR ".join(parts) + ")", has_ft
 
@@ -193,31 +193,7 @@ def get_products():
     # COUNT query: skip window-function joins when possible
     if search_terms:
         total = db.session.execute(
-            text(f"""
-                SELECT COUNT(*)
-                FROM products p
-                INNER JOIN collections c ON c.id = p.collection_id
-                WHERE 1=1
-                AND (:is_verified = -1 OR p.is_verified = :is_verified)
-                AND (:is_manual = -1 OR c.is_manual = :is_manual)
-                AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
-                AND (:collection_code = '' OR c.code = :collection_code)
-                AND (:product_number = '' OR p.product_number LIKE :product_number_like)
-                AND (
-                    :pending_sync = 0
-                    OR (
-                        c.is_manual = 0
-                        AND (
-                            p.force_download = 1
-                            OR NOT EXISTS (
-                                SELECT 1 FROM product_translations pt2
-                                WHERE pt2.product_id = p.id
-                            )
-                        )
-                    )
-                )
-                {search_sql}
-            """),
+            text(f"SELECT COUNT(*) {CATALOG_SELECT_FROM} {CATALOG_WHERE} {search_sql}"),
             params
         ).scalar()
     elif raw_prod_name:
