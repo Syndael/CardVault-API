@@ -25,6 +25,7 @@ class PurchaseRepository(CrudRepository):
     create_fields = (
         "entity_id",
         "purchase_date",
+        "delivery_date",
         "total_amount",
         "shipping_cost",
         "currency",
@@ -56,4 +57,48 @@ class PurchaseRepository(CrudRepository):
                 query = query.filter(cls.model.product_id == pid)
             except ValueError:
                 pass
+
+        try:
+            date_from = request.args.get("date_from")
+        except RuntimeError:
+            date_from = None
+        if date_from:
+            query = query.filter(cls.model.purchase_date >= date_from)
+
+        try:
+            date_to = request.args.get("date_to")
+        except RuntimeError:
+            date_to = None
+        if date_to:
+            query = query.filter(cls.model.purchase_date <= date_to + " 23:59:59")
+
+        try:
+            entity_id = request.args.get("entity_id")
+        except RuntimeError:
+            entity_id = None
+        if entity_id:
+            try:
+                query = query.filter(cls.model.entity_id == int(entity_id))
+            except ValueError:
+                pass
+
+        try:
+            shipping_status_id = request.args.get("shipping_status_id")
+        except RuntimeError:
+            shipping_status_id = None
+        if shipping_status_id:
+            ids = [int(x) for x in shipping_status_id.split(",") if x.strip().isdigit()]
+            if ids:
+                query = query.filter(cls.model.shipping_status_id.in_(ids))
+
+        try:
+            shipping_company_id = request.args.get("shipping_company_id")
+        except RuntimeError:
+            shipping_company_id = None
+        if shipping_company_id:
+            try:
+                query = query.filter(cls.model.shipping_company_id == int(shipping_company_id))
+            except ValueError:
+                pass
+
         return paginate_query(query, page, per_page)

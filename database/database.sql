@@ -529,3 +529,5 @@ CREATE INDEX idx_inventory_urls_inventory ON inventory_urls(inventory_id);
 CREATE INDEX idx_collections_code_manual ON collections(code, is_manual);
 CREATE INDEX idx_products_type_collection ON products(product_type_id, collection_id);
 CREATE INDEX idx_files_product_language_id ON files(product_id, language_id, id);
+
+ALTER TABLE purchases ADD COLUMN delivery_date DATETIME NULL AFTER purchase_date;

@@ -14,6 +14,7 @@ class PurchaseModel(BaseModel):
         nullable=False
     )
     purchase_date = db.Column(db.DateTime, nullable=True)
+    delivery_date = db.Column(db.DateTime, nullable=True)
     total_amount = db.Column(db.Numeric(10, 2))
     shipping_cost = db.Column(
         db.Numeric(10, 2),

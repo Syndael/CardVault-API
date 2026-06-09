@@ -8,6 +8,7 @@ class PurchaseSchema(Schema):
     id = fields.Int(dump_only=True)
     entity_id = fields.Int(load_only=True, required=True)
     purchase_date = fields.DateTime(required=False, allow_none=True)
+    delivery_date = fields.DateTime(required=False, allow_none=True)
     total_amount = fields.Decimal(
         places=2,
         as_string=True,
