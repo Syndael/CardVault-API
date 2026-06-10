@@ -25,6 +25,7 @@ from app.controllers.purchase_controller import purchase_blueprint
 from app.controllers.purchase_item_controller import purchase_item_blueprint
 from app.controllers.scheduled_task_controller import scheduled_task_blueprint
 from app.controllers.setting_controller import setting_blueprint
+from app.controllers.statistics_controller import statistics_blueprint
 from app.controllers.tag_controller import tag_blueprint
 from app.controllers.task_execution_controller import task_execution_blueprint
 from app.controllers.type_controller import type_blueprint
@@ -101,6 +102,7 @@ def create_app():
     register_protected(tag_blueprint, "/api/tags")
     register_protected(scheduled_task_blueprint, "/api/scheduled-tasks")
     register_protected(setting_blueprint, "/api/settings")
+    register_protected(statistics_blueprint, "/api/statistics")
     register_protected(task_execution_blueprint, "/api/task-executions")
 
     return app
