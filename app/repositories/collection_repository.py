@@ -80,6 +80,9 @@ class CollectionRepository:
         is_manual = filters.get("is_manual")
         if is_manual is not None and is_manual != "":
             conditions.append(CollectionModel.is_manual == (is_manual in ("1", "true", "True")))
+        force_download = filters.get("force_download")
+        if force_download is not None and force_download != "":
+            conditions.append(CollectionModel.force_download == (force_download in ("1", "true", "True")))
         if conditions:
             query = query.filter(*conditions)
         query = CollectionRepository._apply_sort(query, sort_by)
@@ -95,7 +98,9 @@ class CollectionRepository:
             card_type_id=data["card_type_id"],
             code=data["code"],
             is_manual=data.get("is_manual", True),
-            release_date=data.get("release_date")
+            release_date=data.get("release_date"),
+            force_url=data.get("force_url"),
+            force_download=data.get("force_download", False)
         )
         db.session.add(entity)
         db.session.commit()
@@ -110,6 +115,8 @@ class CollectionRepository:
         entity.code = data.get("code", entity.code)
         entity.is_manual = data.get("is_manual", entity.is_manual)
         entity.release_date = data.get("release_date", entity.release_date)
+        entity.force_url = data.get("force_url", entity.force_url)
+        entity.force_download = data.get("force_download", entity.force_download)
         db.session.commit()
         return entity
 

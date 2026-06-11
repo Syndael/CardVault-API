@@ -10,6 +10,8 @@ class CollectionSchema(Schema):
     code = fields.Str(required=True)
     is_manual = BitBool()
     release_date = fields.Date(allow_none=True)
+    force_url = fields.Str(allow_none=True)
+    force_download = BitBool()
     created_at = fields.DateTime(dump_only=True)
     card_type = fields.Nested(
         TypeSchema,

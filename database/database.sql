@@ -18,6 +18,8 @@ CREATE TABLE collections (
   code VARCHAR(50) NOT NULL,
   is_manual BIT NOT NULL DEFAULT b'0',
   release_date DATE,
+  force_url VARCHAR(500) DEFAULT NULL,
+  force_download BIT NOT NULL DEFAULT b'0',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_collections_card_type

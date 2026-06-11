@@ -21,6 +21,12 @@ class CollectionModel(BaseModel):
         server_default="0"
     )
     release_date = db.Column(db.Date)
+    force_url = db.Column(db.String(500))
+    force_download = db.Column(
+        BitBoolean,
+        nullable=False,
+        server_default="0"
+    )
     created_at = db.Column(
         db.TIMESTAMP,
         server_default=func.current_timestamp()

@@ -35,6 +35,7 @@ def get_all():
         "name": (request.args.get("name") or "").strip(),
         "card_type_id": (request.args.get("card_type_id") or "").strip(),
         "is_manual": (request.args.get("is_manual") or "").strip(),
+        "force_download": (request.args.get("force_download") or "").strip(),
     }
     filters = {k: v for k, v in filters.items() if v}
     if filters:
