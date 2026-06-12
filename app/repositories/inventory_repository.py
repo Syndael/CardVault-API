@@ -141,6 +141,20 @@ class InventoryRepository(CrudRepository):
                 )
 
         try:
+            is_sealed_val = request.args.get("is_sealed", "").strip()
+        except RuntimeError:
+            is_sealed_val = ""
+        if is_sealed_val in ("1", "0"):
+            query = query.filter(cls.model.is_sealed == (is_sealed_val == "1"))
+
+        try:
+            posted_instagram_val = request.args.get("posted_instagram", "").strip()
+        except RuntimeError:
+            posted_instagram_val = ""
+        if posted_instagram_val in ("1", "0"):
+            query = query.filter(cls.model.posted_instagram == (posted_instagram_val == "1"))
+
+        try:
             raw_sort = (request.args.get("sort") or "newest").strip()
         except RuntimeError:
             raw_sort = "newest"
