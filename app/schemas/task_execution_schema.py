@@ -14,5 +14,6 @@ class TaskExecutionSchema(Schema):
     started_at        = fields.DateTime(dump_only=True)
     finished_at       = fields.DateTime(dump_only=True)
     output            = fields.Str(dump_only=True)
+    log_file_path     = fields.Str(allow_none=True)
     created_at        = fields.DateTime(dump_only=True)
     scheduled_task    = fields.Nested(ScheduledTaskSchema, dump_only=True)

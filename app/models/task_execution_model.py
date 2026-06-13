@@ -14,6 +14,7 @@ class TaskExecutionModel(BaseModel):
     started_at        = db.Column(db.DateTime,  nullable=True)
     finished_at       = db.Column(db.DateTime,  nullable=True)
     output            = db.Column(db.Text,      nullable=True)
+    log_file_path     = db.Column(db.String(500), nullable=True)
     created_at        = db.Column(db.TIMESTAMP, server_default=func.current_timestamp())
 
     scheduled_task = db.relationship("ScheduledTaskModel", back_populates="executions")

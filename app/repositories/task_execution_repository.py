@@ -8,7 +8,7 @@ class TaskExecutionRepository(CrudRepository):
     model = TaskExecutionModel
     order_by = (TaskExecutionModel.scheduled_date.desc(),)
     create_fields = ("scheduled_task_id", "status", "scheduled_date")
-    update_fields = ("status", "started_at", "finished_at", "output")
+    update_fields = ("status", "started_at", "finished_at", "output", "log_file_path")
 
     @classmethod
     def get_pending(cls):

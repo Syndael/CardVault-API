@@ -1,3 +1,5 @@
+import os
+
 from flask import jsonify
 
 import app.auth as auth
@@ -36,3 +38,21 @@ def get_last(task_id):
         return jsonify(None), 200
     schema = TaskExecutionSchema()
     return jsonify(schema.dump(data))
+
+
+@task_execution_blueprint.route("/<int:exec_id>/log", methods=["GET"], strict_slashes=False)
+def get_execution_log(exec_id):
+    if not auth.has_any_role(*READ_ROLES):
+        return jsonify({"message": "Forbidden"}), 403
+    execution = TaskExecutionService.get_by_id(exec_id)
+    if not execution or not execution.log_file_path:
+        return jsonify({"message": "Log not found"}), 404
+    log_path = execution.log_file_path
+    if not os.path.isabs(log_path):
+        api_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+        log_path = os.path.join(api_root, log_path)
+    if not os.path.exists(log_path):
+        return jsonify({"message": "Log file not found on disk"}), 404
+    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+        content = f.read()
+    return jsonify({"content": content})

@@ -503,6 +503,7 @@ CREATE TABLE task_executions (
   started_at DATETIME,
   finished_at DATETIME,
   output TEXT,
+  log_file_path VARCHAR(500),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_executions_task
