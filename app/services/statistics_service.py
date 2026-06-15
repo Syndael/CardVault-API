@@ -65,6 +65,37 @@ def summary():
         sa_func.count(InventoryPriceHistoryModel.inventory_id.distinct())
     ).scalar()
 
+    latest_price_subq = (
+        db.session.query(
+            InventoryPriceHistoryModel.inventory_id,
+            InventoryPriceHistoryModel.price,
+            sa_func.row_number().over(
+                partition_by=InventoryPriceHistoryModel.inventory_id,
+                order_by=InventoryPriceHistoryModel.recorded_at.desc(),
+            ).label("rn"),
+        )
+        .subquery()
+    )
+    latest_price_subq = (
+        db.session.query(latest_price_subq)
+        .filter(latest_price_subq.c.rn == 1)
+        .subquery()
+    )
+
+    balance_query = db.session.query(
+        sa_func.coalesce(sa_func.sum(latest_price_subq.c.price * InventoryModel.quantity), 0)
+    ).select_from(InventoryModel).outerjoin(
+        latest_price_subq,
+        latest_price_subq.c.inventory_id == InventoryModel.id,
+    )
+
+    if not is_admin and user:
+        balance_query = balance_query.filter(InventoryModel.user_id == user.id)
+    elif not is_admin:
+        balance_query = balance_query.filter(text("1=0"))
+
+    total_balance = balance_query.scalar()
+
     return {
         "total_inventory_items": int(total_inventory),
         "total_products": int(total_products),
@@ -72,6 +103,7 @@ def summary():
         "total_purchase_amount": float(total_purchase_amount),
         "total_shipping_costs": float(total_shipping),
         "total_spent": float(total_purchase_amount) + float(total_shipping),
+        "total_balance": float(total_balance),
         "price_tracked_items": int(price_tracked),
     }
 
@@ -80,6 +112,23 @@ def inventory_value_by_type():
     user = getattr(g, "current_user", None)
     is_admin = _is_admin()
 
+    latest_price_subq = (
+        db.session.query(
+            InventoryPriceHistoryModel.inventory_id,
+            InventoryPriceHistoryModel.price,
+            sa_func.row_number().over(
+                partition_by=InventoryPriceHistoryModel.inventory_id,
+                order_by=InventoryPriceHistoryModel.recorded_at.desc(),
+            ).label("rn"),
+        )
+        .subquery()
+    )
+    latest_price_subq = (
+        db.session.query(latest_price_subq)
+        .filter(latest_price_subq.c.rn == 1)
+        .subquery()
+    )
+
     query = db.session.query(
         TypeModel.id.label("type_id"),
         TypeModel.name.label("type_name"),
@@ -87,10 +136,15 @@ def inventory_value_by_type():
         sa_func.count(InventoryModel.id).label("item_count"),
         sa_func.coalesce(sa_func.sum(InventoryModel.quantity), 0).label("total_quantity"),
         sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity), 0).label("acquisition_value"),
+        sa_func.coalesce(sa_func.sum(latest_price_subq.c.price * InventoryModel.quantity), 0).label("current_value"),
     ).select_from(InventoryModel)
     query = query.join(ProductModel, InventoryModel.product_id == ProductModel.id)
     query = query.join(TypeModel, ProductModel.product_type_id == TypeModel.id)
     query = query.outerjoin(PurchaseItemModel, InventoryModel.purchase_item_id == PurchaseItemModel.id)
+    query = query.outerjoin(
+        latest_price_subq,
+        latest_price_subq.c.inventory_id == InventoryModel.id,
+    )
 
     if not is_admin and user:
         query = query.filter(InventoryModel.user_id == user.id)
@@ -101,7 +155,8 @@ def inventory_value_by_type():
     query = query.order_by(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity).desc())
 
     rows = query.all()
-    total_value = sum(float(r.acquisition_value) for r in rows)
+    total_acq = sum(float(r.acquisition_value) for r in rows)
+    total_cur = sum(float(r.current_value) for r in rows)
     total_qty = sum(int(r.total_quantity) for r in rows)
 
     types = []
@@ -113,12 +168,14 @@ def inventory_value_by_type():
             "item_count": int(r.item_count),
             "total_quantity": int(r.total_quantity),
             "acquisition_value": float(r.acquisition_value),
-            "percentage": round(float(r.acquisition_value) / total_value * 100, 1) if total_value else 0,
+            "current_value": float(r.current_value),
+            "percentage": round(float(r.acquisition_value) / total_acq * 100, 1) if total_acq else 0,
         })
 
     return {
         "types": types,
-        "total_value": float(total_value),
+        "total_acquisition": float(total_acq),
+        "total_current": float(total_cur),
         "total_quantity": int(total_qty),
     }
 
@@ -348,7 +405,7 @@ def purchases_by_entity():
             query = query.filter(text("1=0"))
 
         query = query.group_by(entity_expr, EntityModel.name, EntityModel.parent_id)
-        query = query.order_by(sa_func.sum(PurchaseModel.total_amount).desc())
+        query = query.order_by(EntityModel.name.asc())
         return query.all()
 
     entities = _entity_query()
@@ -717,7 +774,7 @@ def avg_monthly_spending():
     ]
 
 
-def best_investment_entities(limit=10):
+def best_investment_entities(limit=None):
     user = getattr(g, "current_user", None)
     is_admin = _is_admin()
 
@@ -742,7 +799,8 @@ def best_investment_entities(limit=10):
 
     query = query.group_by(EntityModel.id, EntityModel.name)
     query = query.order_by((sa_func.coalesce(sa_func.sum(latest.c.price * InventoryModel.quantity), 0) - sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity), 0)).desc())
-    query = query.limit(limit)
+    if limit is not None:
+        query = query.limit(limit)
 
     rows = query.all()
     result = []

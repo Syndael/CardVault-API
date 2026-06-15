@@ -29,6 +29,7 @@ from app.controllers.statistics_controller import statistics_blueprint
 from app.controllers.tag_controller import tag_blueprint
 from app.controllers.task_execution_controller import task_execution_blueprint
 from app.controllers.type_controller import type_blueprint
+from app.controllers.wishlist_controller import wishlist_blueprint
 from app.database.session import db
 
 
@@ -104,5 +105,6 @@ def create_app():
     register_protected(setting_blueprint, "/api/settings")
     register_protected(statistics_blueprint, "/api/statistics")
     register_protected(task_execution_blueprint, "/api/task-executions")
+    register_protected(wishlist_blueprint, "/api/wishlist-items")
 
     return app

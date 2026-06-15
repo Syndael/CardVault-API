@@ -12,6 +12,7 @@ class UserRepository(CrudRepository):
         "display_name",
         "is_active",
         "is_email_verified",
+        "telegram_id",
         "last_login_at",
         "password_changed_at"
     )

@@ -534,3 +534,85 @@ CREATE INDEX idx_products_type_collection ON products(product_type_id, collectio
 CREATE INDEX idx_files_product_language_id ON files(product_id, language_id, id);
 
 ALTER TABLE purchases ADD COLUMN delivery_date DATETIME NULL AFTER purchase_date;
+
+ALTER TABLE users ADD COLUMN telegram_id VARCHAR(100) NULL AFTER is_email_verified;
+
+CREATE TABLE wishlist_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  product_id INT NOT NULL,
+  target_price DECIMAL(10,2) NULL,
+  language_id INT NULL,
+  condition_id INT NULL,
+  notes TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_wishlist_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_wishlist_product
+    FOREIGN KEY (product_id)
+    REFERENCES products(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_wishlist_language
+    FOREIGN KEY (language_id)
+    REFERENCES languages(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_wishlist_condition
+    FOREIGN KEY (condition_id)
+    REFERENCES product_conditions(id)
+    ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_wishlist_user ON wishlist_items(user_id);
+CREATE INDEX idx_wishlist_product ON wishlist_items(product_id);
+
+CREATE TABLE wishlist_prices (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  wishlist_item_id INT NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  source VARCHAR(100) NULL,
+  url VARCHAR(500) NULL,
+  recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_wishlist_prices_item
+    FOREIGN KEY (wishlist_item_id)
+    REFERENCES wishlist_items(id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX idx_wishlist_prices_item ON wishlist_prices(wishlist_item_id);
+CREATE INDEX idx_wishlist_prices_recorded ON wishlist_prices(recorded_at);
+
+CREATE TABLE wishlist_notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  wishlist_item_id INT NOT NULL,
+  notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  type VARCHAR(20) NOT NULL DEFAULT 'email',
+  price DECIMAL(10,2) NOT NULL,
+
+  CONSTRAINT fk_wishlist_notifications_item
+    FOREIGN KEY (wishlist_item_id)
+    REFERENCES wishlist_items(id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX idx_wishlist_notifications_item ON wishlist_notifications(wishlist_item_id);
+CREATE INDEX idx_wishlist_notifications_type ON wishlist_notifications(type);
+
+ALTER TABLE wishlist_prices
+  ADD COLUMN min_price DECIMAL(10,2) NULL AFTER price,
+  ADD COLUMN max_price DECIMAL(10,2) NULL AFTER min_price,
+  ADD COLUMN min_price_recorded_at TIMESTAMP NULL AFTER max_price,
+  ADD COLUMN max_price_recorded_at TIMESTAMP NULL AFTER min_price_recorded_at;
+
+ALTER TABLE wishlist_items
+  ADD COLUMN w_state VARCHAR(20) NOT NULL DEFAULT 'buscando'
+  AFTER condition_id;
+
+CREATE INDEX idx_wishlist_w_state ON wishlist_items(w_state);

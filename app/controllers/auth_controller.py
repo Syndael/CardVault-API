@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, g
 
 import app.auth as auth
 from app.schemas.user_schema import UserSchema
+from app.services.user_service import UserService
 
 auth_blueprint = Blueprint("auth", __name__)
 
@@ -50,5 +51,21 @@ def logout():
 @auth.require_auth
 def me():
     user = g.current_user
+    schema = UserSchema()
+    return jsonify(schema.dump(user))
+
+
+@auth_blueprint.route("/me", methods=["PATCH"])  # /api/auth/me
+@auth.require_auth
+def update_me():
+    user = g.current_user
+    data = request.get_json(silent=True) or {}
+
+    allowed_fields = {"display_name", "email", "telegram_id"}
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+    if update_data:
+        UserService.update(user.id, update_data)
+
     schema = UserSchema()
     return jsonify(schema.dump(user))

@@ -133,5 +133,5 @@ def avg_monthly_spending_ep():
 def best_investment_entities_ep():
     if not admin_or_inventory():
         return jsonify({"message": "Forbidden"}), 403
-    limit = request.args.get("limit", 10, type=int)
+    limit = request.args.get("limit", type=int)
     return jsonify(best_investment_entities(limit=limit))

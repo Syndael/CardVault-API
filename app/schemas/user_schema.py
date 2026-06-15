@@ -9,6 +9,7 @@ class UserSchema(Schema):
     display_name = fields.Str(allow_none=True)
     is_active = fields.Bool(load_default=True)
     is_email_verified = fields.Bool(load_default=False)
+    telegram_id = fields.Str(allow_none=True, load_default=None)
     last_login_at = fields.DateTime(allow_none=True)
     password_changed_at = fields.DateTime(allow_none=True)
     created_at = fields.DateTime(dump_only=True)

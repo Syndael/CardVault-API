@@ -91,4 +91,12 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('app.inventory.files.path.pattern', '{card_type}/{collection_code}/{product_number}/{inventory_id}'),
 ('app.purchase.files.path', './../.files/purchases'),
 ('app.purchase.files.path.pattern', '{year}/{month}/{purchase_id}'),
-('cardmarket.checker.price.skip', '0.5');
+('cardmarket.checker.price.skip', '0.5'),
+('cardmarket.checker.price.minutes', '10080'),
+('cardmarket.checker.wishlist.minutes', '10080');
+
+INSERT INTO types (type, name) VALUES
+('w_state', 'buscando'),
+('w_state', 'inactivo'),
+('w_state', 'comprado'),
+('w_state', 'notificado');

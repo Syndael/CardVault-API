@@ -18,6 +18,7 @@ class UserModel(BaseModel):
         nullable=False,
         server_default="0"
     )
+    telegram_id = db.Column(db.String(100), nullable=True)
     last_login_at = db.Column(db.DateTime)
     password_changed_at = db.Column(db.DateTime)
     created_at = db.Column(
@@ -34,4 +35,5 @@ class UserModel(BaseModel):
         db.UniqueConstraint("username", name="uq_users_username"),
         db.UniqueConstraint("email", name="uq_users_email"),
         db.Index("idx_users_active", "is_active"),
+        db.Index("idx_users_telegram", "telegram_id"),
     )
