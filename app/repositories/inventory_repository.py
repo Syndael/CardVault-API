@@ -1,5 +1,5 @@
 from flask import request, g
-from sqlalchemy import and_, exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.collection_model import CollectionModel
@@ -112,11 +112,18 @@ class InventoryRepository(CrudRepository):
         except RuntimeError:
             product_name = ""
         if product_name:
+            if not _joined_collection:
+                query = query.join(cls.model.collection)
+                _joined_collection = True
             if not _joined_product:
                 query = query.join(cls.model.product)
                 _joined_product = True
             query = query.join(ProductModel.translations).filter(
-                ProductTranslationModel.name.ilike(f"%{product_name}%")
+                or_(
+                    ProductTranslationModel.name.ilike(f"%{product_name}%"),
+                    CollectionModel.code.ilike(f"%{product_name}%"),
+                    ProductModel.product_number.ilike(f"%{product_name}%"),
+                )
             )
 
         try:
