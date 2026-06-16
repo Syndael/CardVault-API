@@ -132,7 +132,6 @@ def record_price(item_id):
         item_id,
         price=price,
         source=data.get("source"),
-        url=data.get("url"),
     )
     schema = WishlistPriceSchema()
     return jsonify(schema.dump(record)), 201

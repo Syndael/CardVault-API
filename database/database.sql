@@ -577,7 +577,6 @@ CREATE TABLE wishlist_prices (
   wishlist_item_id INT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   source VARCHAR(100) NULL,
-  url VARCHAR(500) NULL,
   recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_wishlist_prices_item

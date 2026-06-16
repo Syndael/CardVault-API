@@ -15,5 +15,4 @@ class WishlistPriceModel(BaseModel):
     min_price_recorded_at = db.Column(db.TIMESTAMP, nullable=True)
     max_price_recorded_at = db.Column(db.TIMESTAMP, nullable=True)
     source = db.Column(db.String(100), nullable=True)
-    url = db.Column(db.String(500), nullable=True)
     recorded_at = db.Column(db.TIMESTAMP, server_default=func.current_timestamp())

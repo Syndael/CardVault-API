@@ -10,7 +10,6 @@ class WishlistPriceSchema(Schema):
     min_price_recorded_at = fields.DateTime(allow_none=True)
     max_price_recorded_at = fields.DateTime(allow_none=True)
     source = fields.Str(allow_none=True)
-    url = fields.Str(allow_none=True)
     recorded_at = fields.DateTime(dump_only=True)
 
 

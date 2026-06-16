@@ -113,34 +113,43 @@ class WishlistItemService(CrudService):
         ).all()
 
     @classmethod
-    def record_price(cls, item_id, price, source=None, url=None):
+    def record_price(cls, item_id, price, source=None):
         price_val = float(price) if not isinstance(price, (int, float)) else float(price)
         now = datetime.now()
 
-        latest = WishlistPriceModel.query.filter_by(wishlist_item_id=item_id).order_by(WishlistPriceModel.recorded_at.desc()).first()
+        record = WishlistPriceModel.query.filter_by(wishlist_item_id=item_id).first()
 
-        if latest and latest.min_price is not None:
-            min_price = min(price_val, float(latest.min_price))
-            max_price = max(price_val, float(latest.max_price))
-            min_ts = latest.min_price_recorded_at if float(latest.min_price) < price_val else now
-            max_ts = latest.max_price_recorded_at if float(latest.max_price) > price_val else now
+        if record:
+            if record.min_price is not None:
+                new_min = min(price_val, float(record.min_price))
+                new_max = max(price_val, float(record.max_price))
+                min_ts = record.min_price_recorded_at if float(record.min_price) < price_val else now
+                max_ts = record.max_price_recorded_at if float(record.max_price) > price_val else now
+            else:
+                new_min = price_val
+                new_max = price_val
+                min_ts = now
+                max_ts = now
+
+            record.price = price_val
+            record.min_price = new_min
+            record.max_price = new_max
+            record.min_price_recorded_at = min_ts
+            record.max_price_recorded_at = max_ts
+            record.source = source
+            record.recorded_at = now
         else:
-            min_price = price_val
-            max_price = price_val
-            min_ts = now
-            max_ts = now
+            record = WishlistPriceModel(
+                wishlist_item_id=item_id,
+                price=price_val,
+                min_price=price_val,
+                max_price=price_val,
+                min_price_recorded_at=now,
+                max_price_recorded_at=now,
+                source=source,
+            )
+            db.session.add(record)
 
-        record = WishlistPriceModel(
-            wishlist_item_id=item_id,
-            price=price,
-            min_price=min_price,
-            max_price=max_price,
-            min_price_recorded_at=min_ts,
-            max_price_recorded_at=max_ts,
-            source=source,
-            url=url,
-        )
-        db.session.add(record)
         db.session.commit()
         return record
 

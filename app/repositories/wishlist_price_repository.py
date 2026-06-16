@@ -13,6 +13,5 @@ class WishlistPriceRepository(CrudRepository):
         "min_price_recorded_at",
         "max_price_recorded_at",
         "source",
-        "url",
     )
     update_fields = ()
