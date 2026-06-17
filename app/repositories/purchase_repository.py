@@ -1,7 +1,9 @@
+from sqlalchemy import or_, cast, String
 from sqlalchemy.orm import subqueryload
 
 from flask import request, g
 
+from app.models.entity_model import EntityModel
 from app.models.file_model import FileModel
 from app.models.purchase_model import PurchaseModel
 from app.repositories.crud_repository import CrudRepository
@@ -100,5 +102,21 @@ class PurchaseRepository(CrudRepository):
                 query = query.filter(cls.model.shipping_company_id == int(shipping_company_id))
             except ValueError:
                 pass
+
+        try:
+            q = request.args.get("q")
+        except RuntimeError:
+            q = None
+        if q:
+            search = f"%{q}%"
+            query = query.outerjoin(EntityModel, cls.model.entity_id == EntityModel.id)
+            query = query.filter(
+                or_(
+                    cls.model.external_reference.ilike(search),
+                    cls.model.tracking_code.ilike(search),
+                    EntityModel.name.ilike(search),
+                    cast(cls.model.purchase_date, String(19)).ilike(search),
+                )
+            )
 
         return paginate_query(query, page, per_page)
