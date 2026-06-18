@@ -72,6 +72,8 @@ def create_app():
             from flask import jsonify
             if request.method == "OPTIONS":
                 return
+            if request.path == "/api/product-catalog/suggest-urls":
+                return
             user = _auth.get_user_from_request()
             if not user:
                 return jsonify({"message": "Unauthorized"}), 401

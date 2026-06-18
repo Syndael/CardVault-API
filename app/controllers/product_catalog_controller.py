@@ -3,7 +3,9 @@ import os
 import re
 from io import BytesIO
 from math import ceil
+from urllib.parse import quote
 
+import requests
 from flask import Blueprint, g, jsonify, request, send_file, make_response
 from sqlalchemy import text
 
@@ -238,6 +240,7 @@ def get_products():
                 c.code AS collection_code,
                 CAST(c.is_manual AS UNSIGNED) AS collection_is_manual,
                 CAST(p.is_manual AS UNSIGNED) AS product_is_manual,
+                CAST(p.force_download AS UNSIGNED) AS force_download,
                 ct.name AS collection_name,
                 ct.name_alter AS collection_name_alter,
                 p.product_number AS product_number,
@@ -272,6 +275,7 @@ def get_products():
                 "collection_code": row["collection_code"],
                 "collection_is_manual": row["collection_is_manual"] == 1,
                 "product_is_manual": row["product_is_manual"] == 1,
+                "force_download": row["force_download"] == 1,
                 "is_verified": row["is_verified"] == 1,
                 "collection_name": row["collection_name"],
                 "product_number": row["product_number"],
@@ -323,6 +327,58 @@ def resolve_file_path(file_path):
             return candidate
 
     return None
+
+
+@product_catalog_blueprint.route("/suggest-urls", methods=["GET"])
+def suggest_urls():
+    collection_code = request.args.get("collection_code", "").strip()
+    product_number = request.args.get("product_number", "").strip()
+    product_name = request.args.get("product_name", "").strip()
+
+    parts = [p for p in [collection_code, product_number, product_name] if p]
+    if not parts:
+        return jsonify({"cardmarket": None, "pricecharting": None})
+
+    base_query = " ".join(parts)
+
+    def search_ddg(query):
+        try:
+            sess = requests.Session()
+            sess.get("https://lite.duckduckgo.com/lite/", timeout=10, headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+            })
+            resp = sess.post("https://lite.duckduckgo.com/lite/", data={"q": query}, timeout=15, headers={
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+            })
+            if not resp.ok:
+                return []
+            link_re = re.compile(r'<a[^>]+href="(https?://[^"]+)"')
+            return link_re.findall(resp.text)
+        except Exception:
+            return []
+
+    cm_links = search_ddg(base_query + " cardmarket")
+    pc_links = search_ddg(base_query + " pricecharting")
+
+    cardmarket_url = None
+    pricecharting_url = None
+
+    for link in cm_links:
+        if "cardmarket.com" in link:
+            cardmarket_url = link
+            break
+
+    for link in pc_links:
+        if "pricecharting.com/game/" in link:
+            pricecharting_url = link
+            break
+    if not pricecharting_url:
+        for link in pc_links:
+            if "pricecharting.com" in link:
+                pricecharting_url = link
+                break
+
+    return jsonify({"cardmarket": cardmarket_url, "pricecharting": pricecharting_url})
 
 
 @product_catalog_blueprint.route("/files/<int:file_id>/content", methods=["GET"])
