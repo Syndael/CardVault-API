@@ -14,6 +14,13 @@ INSERT INTO types (type, name, short_name) VALUES
 ('card', 'Yu-Gi-Oh!', 'YUG');
 
 INSERT INTO types (type, name) VALUES
+('product_format', 'carta'),
+('product_format', 'carta jumbo'),
+('product_format', 'sobre'),
+('product_format', 'caja'),
+('product_format', 'otro');
+
+INSERT INTO types (type, name) VALUES
 ('entity', 'store'),
 ('entity', 'person'),
 ('entity', 'platform'),

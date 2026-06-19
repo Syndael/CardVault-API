@@ -37,6 +37,7 @@ CREATE TABLE products (
   id INT AUTO_INCREMENT PRIMARY KEY,
   collection_id INT NOT NULL,
   product_type_id INT NOT NULL,
+  product_format_id INT NOT NULL,
   product_number VARCHAR(50) NULL,
   is_manual BIT(1) NOT NULL DEFAULT b'0',
   is_verified BIT NOT NULL DEFAULT b'0',
@@ -53,8 +54,13 @@ CREATE TABLE products (
     REFERENCES types(id)
     ON DELETE RESTRICT,
 
+  CONSTRAINT fk_products_format
+    FOREIGN KEY (product_format_id)
+    REFERENCES types(id)
+    ON DELETE RESTRICT,
+
   CONSTRAINT uq_collection_product
-    UNIQUE (collection_id, product_number, product_type_id, is_manual)
+    UNIQUE (collection_id, product_number, product_type_id, product_format_id, is_manual)
 );
 
 CREATE INDEX idx_products_collection ON products(collection_id);

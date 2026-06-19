@@ -121,6 +121,7 @@ WHERE 1=1
 AND (:is_verified = -1 OR p.is_verified = :is_verified)
 AND (:is_manual = -1 OR c.is_manual = :is_manual)
 AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
+AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
 AND (:collection_code = '' OR c.code = :collection_code)
 AND (:product_number = '' OR p.product_number LIKE :product_number_like)
 AND (:product_name = '' OR pt.name LIKE :product_name_like OR pt.name_alter LIKE :product_name_like)
@@ -164,6 +165,7 @@ def get_products():
     raw_verified = request.args.get("is_verified")
     raw_manual = request.args.get("is_manual")
     raw_type_id = request.args.get("product_type_id")
+    raw_format_id = request.args.get("product_format_id")
     raw_pending = request.args.get("pending_sync")
     raw_col_code = (request.args.get("collection_code") or "").strip()
     raw_prod_number = (request.args.get("product_number") or "").strip()
@@ -172,6 +174,7 @@ def get_products():
         "is_verified": int(raw_verified) if raw_verified in ("0", "1") else -1,
         "is_manual": int(raw_manual) if raw_manual in ("0", "1") else -1,
         "product_type_id": int(raw_type_id) if raw_type_id else -1,
+        "product_format_id": int(raw_format_id) if raw_format_id else -1,
         "pending_sync": 1 if raw_pending == "1" else 0,
         "collection_code": raw_col_code,
         "product_number": raw_prod_number,
@@ -211,7 +214,8 @@ def get_products():
                 WHERE 1=1
                 AND (:is_verified = -1 OR p.is_verified = :is_verified)
                 AND (:is_manual = -1 OR c.is_manual = :is_manual)
-                AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
+AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
+AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
                 AND (:collection_code = '' OR c.code = :collection_code)
                 AND (:product_number = '' OR p.product_number LIKE :product_number_like)
                 AND (

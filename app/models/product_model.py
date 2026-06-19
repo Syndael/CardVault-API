@@ -19,20 +19,27 @@ class ProductModel(BaseModel):
         db.ForeignKey("types.id", ondelete="RESTRICT"),
         nullable=False
     )
+    product_format_id = db.Column(
+        db.Integer,
+        db.ForeignKey("types.id", ondelete="RESTRICT"),
+        nullable=False
+    )
     product_number  = db.Column(db.String(50))
     force_download  = db.Column(BitBoolean)
     is_verified     = db.Column(BitBoolean, server_default="0")
     is_manual       = db.Column(BitBoolean, server_default="0")
     created_at      = db.Column(db.TIMESTAMP, server_default=func.current_timestamp())
 
-    collection   = db.relationship("CollectionModel", backref="products", lazy=True)
-    product_type = db.relationship("TypeModel",       backref="products", lazy=True)
+    collection      = db.relationship("CollectionModel", backref="products", lazy=True)
+    product_type    = db.relationship("TypeModel",       foreign_keys=[product_type_id], backref="products", lazy=True)
+    product_format  = db.relationship("TypeModel",       foreign_keys=[product_format_id])
 
     __table_args__ = (
         db.UniqueConstraint(
             "collection_id",
             "product_number",
             "product_type_id",
+            "product_format_id",
             name="uq_collection_product"
         ),
     )

@@ -8,6 +8,7 @@ class ProductRepository(CrudRepository):
     create_fields = (
         "collection_id",
         "product_type_id",
+        "product_format_id",
         "product_number",
         "force_download",
         "is_verified",

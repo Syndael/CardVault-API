@@ -8,7 +8,7 @@ class TaskExecutionSchema(Schema):
     scheduled_task_id = fields.Int(required=True)
     status            = fields.Str(
         load_default="pending",
-        validate=validate.OneOf(["pending", "running", "completed", "error"]),
+        validate=validate.OneOf(["pending", "running", "completed", "error", "cancelled"]),
     )
     scheduled_date    = fields.DateTime(required=True)
     started_at        = fields.DateTime(dump_only=True)

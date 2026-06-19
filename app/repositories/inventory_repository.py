@@ -70,6 +70,18 @@ class InventoryRepository(CrudRepository):
             except ValueError:
                 pass
 
+        try:
+            product_ids = request.args.get("product_ids")
+        except RuntimeError:
+            product_ids = None
+        if product_ids and hasattr(cls.model, "product_id"):
+            try:
+                pids = [int(pid.strip()) for pid in product_ids.split(",") if pid.strip()]
+                if pids:
+                    query = query.filter(cls.model.product_id.in_(pids))
+            except ValueError:
+                pass
+
         _joined_collection = False
         _joined_product = False
 
@@ -94,6 +106,20 @@ class InventoryRepository(CrudRepository):
                     query = query.join(cls.model.product)
                     _joined_product = True
                 query = query.filter(ProductModel.product_type_id == cid)
+            except ValueError:
+                pass
+
+        try:
+            product_format_id = request.args.get("product_format_id", "").strip()
+        except RuntimeError:
+            product_format_id = ""
+        if product_format_id:
+            try:
+                pfid = int(product_format_id)
+                if not _joined_product:
+                    query = query.join(cls.model.product)
+                    _joined_product = True
+                query = query.filter(ProductModel.product_format_id == pfid)
             except ValueError:
                 pass
 
