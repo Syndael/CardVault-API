@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from flask import request
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.database.session import db
 from app.models.wishlist_item_model import WishlistItemModel
@@ -8,6 +9,7 @@ from app.models.wishlist_notification_model import WishlistNotificationModel
 from app.models.wishlist_price_model import WishlistPriceModel
 from app.models.product_model import ProductModel
 from app.models.collection_model import CollectionModel
+from app.models.product_price_tracking_model import ProductPriceTrackingModel
 from app.models.product_translation_model import ProductTranslationModel
 from app.repositories.wishlist_item_repository import WishlistItemRepository
 from app.services.crud_service import CrudService
@@ -95,6 +97,22 @@ class WishlistItemService(CrudService):
         if w_state:
             query = query.filter(cls.repository.model.w_state == w_state)
 
+        query = query.options(
+            joinedload(WishlistItemModel.language),
+            joinedload(WishlistItemModel.condition),
+            selectinload(WishlistItemModel.product).selectinload(ProductModel.price_tracking).joinedload(ProductPriceTrackingModel.price_source),
+        )
+
+        return paginate_query(query, page, per_page)
+
+    @classmethod
+    def get_paginated(cls, page, per_page):
+        query = cls.repository.model.query.order_by(cls.repository.model.created_at.desc())
+        query = query.options(
+            joinedload(WishlistItemModel.language),
+            joinedload(WishlistItemModel.condition),
+            selectinload(WishlistItemModel.product).selectinload(ProductModel.price_tracking).joinedload(ProductPriceTrackingModel.price_source),
+        )
         return paginate_query(query, page, per_page)
 
     @classmethod

@@ -38,6 +38,7 @@ class WishlistItemSchema(Schema):
     product_image_url = fields.Method("get_product_image_url", dump_only=True)
     type_name = fields.Method("get_type_name", dump_only=True)
     type_short = fields.Method("get_type_short", dump_only=True)
+    tracker_url = fields.Method("get_tracker_url", dump_only=True)
 
     def get_last_price(self, obj):
         prices = getattr(obj, "prices", []) or []
@@ -104,3 +105,24 @@ class WishlistItemSchema(Schema):
 
     def get_type_short(self, obj):
         return obj.product.product_type.short_name if obj.product and obj.product.product_type else None
+
+    def get_tracker_url(self, obj):
+        if not obj.product:
+            return None
+        trackings = getattr(obj.product, "price_tracking", None)
+        if not trackings:
+            return None
+        t = trackings[0]
+        url = t.url
+        if not url:
+            return None
+        ps = t.price_source
+        lang = getattr(obj, "language", None)
+        cond = getattr(obj, "condition", None)
+        sep = '&' if '?' in url else '?'
+        if ps and ps.language_param and lang and lang.cardmarket_code:
+            url += sep + ps.language_param + '=' + str(lang.cardmarket_code)
+            sep = '&'
+        if ps and ps.condition_param and cond and cond.cardmarket_code:
+            url += sep + ps.condition_param + '=' + str(cond.cardmarket_code)
+        return url

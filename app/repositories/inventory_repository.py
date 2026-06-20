@@ -8,6 +8,7 @@ from app.models.inventory_price_history_model import InventoryPriceHistoryModel
 from app.models.inventory_tag_model import InventoryTagModel
 from app.models.language_model import LanguageModel
 from app.models.product_model import ProductModel
+from app.models.product_price_tracking_model import ProductPriceTrackingModel
 from app.models.product_translation_model import ProductTranslationModel
 from app.models.purchase_item_model import PurchaseItemModel
 from app.models.tag_model import TagModel
@@ -330,6 +331,7 @@ class InventoryRepository(CrudRepository):
             joinedload(InventoryModel.extra_type),
             joinedload(InventoryModel.product).selectinload(ProductModel.translations),
             joinedload(InventoryModel.product).joinedload(ProductModel.product_type),
+            joinedload(InventoryModel.product).selectinload(ProductModel.price_tracking).joinedload(ProductPriceTrackingModel.price_source),
             joinedload(InventoryModel.purchase),
             joinedload(InventoryModel.purchase_item),
         )

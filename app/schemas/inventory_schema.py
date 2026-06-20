@@ -96,6 +96,7 @@ class InventoryListSchema(Schema):
     max_price = fields.Method("get_max_price", dump_only=True, allow_none=True)
     product_image_url = fields.Method("get_product_image_url", dump_only=True)
     inventory_image_url = fields.Method("get_inventory_image_url", dump_only=True)
+    tracker_url = fields.Method("get_tracker_url", dump_only=True)
 
     def get_product_image_url(self, obj):
         return getattr(obj, "_product_image_url", None)
@@ -118,3 +119,25 @@ class InventoryListSchema(Schema):
 
     def get_max_price(self, obj):
         return getattr(obj, "_max_price", None)
+
+    def get_tracker_url(self, obj):
+        product = obj.product
+        if not product:
+            return None
+        trackings = getattr(product, "price_tracking", None)
+        if not trackings:
+            return None
+        t = trackings[0]
+        url = t.url
+        if not url:
+            return None
+        ps = t.price_source
+        lang = obj.language
+        cond = obj.condition
+        sep = '&' if '?' in url else '?'
+        if ps and ps.language_param and lang and lang.cardmarket_code:
+            url += sep + ps.language_param + '=' + str(lang.cardmarket_code)
+            sep = '&'
+        if ps and ps.condition_param and cond and cond.cardmarket_code:
+            url += sep + ps.condition_param + '=' + str(cond.cardmarket_code)
+        return url
