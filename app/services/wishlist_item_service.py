@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import request
 from sqlalchemy.orm import joinedload, selectinload
@@ -133,7 +133,7 @@ class WishlistItemService(CrudService):
     @classmethod
     def record_price(cls, item_id, price, source=None):
         price_val = float(price) if not isinstance(price, (int, float)) else float(price)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         record = WishlistPriceModel.query.filter_by(wishlist_item_id=item_id).first()
 
@@ -164,6 +164,7 @@ class WishlistItemService(CrudService):
                 max_price=price_val,
                 min_price_recorded_at=now,
                 max_price_recorded_at=now,
+                recorded_at=now,
                 source=source,
             )
             db.session.add(record)
