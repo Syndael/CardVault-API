@@ -23,6 +23,13 @@ def _is_admin():
     return any(ur.role.name == "admin" for ur in getattr(user, "user_roles", []))
 
 
+def _can_see_all_inventory():
+    user = getattr(g, "current_user", None)
+    if not user:
+        return False
+    return any(ur.role.name in ("admin", "inventory_manage", "scheduled_task_read") for ur in getattr(user, "user_roles", []))
+
+
 class InventoryRepository(CrudRepository):
     model = InventoryModel
     order_by = (InventoryModel.id,)
@@ -50,7 +57,7 @@ class InventoryRepository(CrudRepository):
             show_all = request.args.get("all", "").lower() in ("1", "true", "yes")
         except RuntimeError:
             pass
-        if _is_admin() and show_all:
+        if _can_see_all_inventory() and show_all:
             pass
         elif not _is_admin():
             user = getattr(g, "current_user", None)

@@ -30,17 +30,25 @@ def _is_admin():
     return any(ur.role.name == "admin" for ur in getattr(user, "user_roles", []))
 
 
+def _can_manage_wishlist():
+    user = getattr(g, "current_user", None)
+    if not user:
+        return False
+    return any(ur.role.name in ("admin", "scheduled_task_read") for ur in getattr(user, "user_roles", []))
+
+
 @wishlist_blueprint.route("", methods=["GET"], strict_slashes=False)
 def list_items():
     uid = _get_current_user_id()
-    if not uid and not _is_admin():
+    if not uid and not _is_admin() and not _can_manage_wishlist():
         return jsonify({"message": "Unauthorized"}), 401
 
     page, per_page = get_pagination_params()
+    can_see_all = _is_admin() or _can_manage_wishlist()
 
-    if _is_admin() and request.args.get("user_id"):
+    if can_see_all and request.args.get("user_id"):
         data = WishlistItemService.get_paginated_by_user(int(request.args["user_id"]), page, per_page)
-    elif _is_admin():
+    elif can_see_all:
         data = WishlistItemService.get_paginated(page, per_page)
     else:
         data = WishlistItemService.get_paginated_by_user(uid, page, per_page)
@@ -54,7 +62,7 @@ def get_item(item_id):
     item = WishlistItemService.get_by_id(item_id)
     if not item:
         return jsonify({"message": "Not found"}), 404
-    if not _owns_item(item) and not _is_admin():
+    if not _owns_item(item) and not _is_admin() and not _can_manage_wishlist():
         return jsonify({"message": "Forbidden"}), 403
 
     schema = WishlistItemSchema()
@@ -80,7 +88,7 @@ def update_item(item_id):
     item = WishlistItemService.get_by_id(item_id)
     if not item:
         return jsonify({"message": "Not found"}), 404
-    if not _owns_item(item) and not _is_admin():
+    if not _owns_item(item) and not _is_admin() and not _can_manage_wishlist():
         return jsonify({"message": "Forbidden"}), 403
 
     data = request.get_json(silent=True) or {}
@@ -94,7 +102,7 @@ def delete_item(item_id):
     item = WishlistItemService.get_by_id(item_id)
     if not item:
         return jsonify({"message": "Not found"}), 404
-    if not _owns_item(item) and not _is_admin():
+    if not _owns_item(item) and not _is_admin() and not _can_manage_wishlist():
         return jsonify({"message": "Forbidden"}), 403
 
     WishlistItemService.delete(item_id)
@@ -106,7 +114,7 @@ def list_prices(item_id):
     item = WishlistItemService.get_by_id(item_id)
     if not item:
         return jsonify({"message": "Not found"}), 404
-    if not _owns_item(item) and not _is_admin():
+    if not _owns_item(item) and not _is_admin() and not _can_manage_wishlist():
         return jsonify({"message": "Forbidden"}), 403
 
     limit = request.args.get("limit", 20, type=int)
@@ -120,7 +128,7 @@ def record_price(item_id):
     item = WishlistItemService.get_by_id(item_id)
     if not item:
         return jsonify({"message": "Not found"}), 404
-    if not _owns_item(item) and not _is_admin():
+    if not _owns_item(item) and not _is_admin() and not _can_manage_wishlist():
         return jsonify({"message": "Forbidden"}), 403
 
     data = request.get_json(silent=True) or {}
