@@ -155,6 +155,9 @@ CREATE TABLE purchases (
   total_amount DECIMAL(10,2) NULL,
   shipping_cost DECIMAL(10,2) DEFAULT 0,
   currency VARCHAR(10) DEFAULT 'EUR',
+  conversion_rate DECIMAL(10,4) NULL,
+  original_amount DECIMAL(10,2) NULL,
+  original_currency VARCHAR(10) NULL,
   external_reference VARCHAR(255) NULL,
   tracking_code VARCHAR(255) NULL,
   shipping_status_id INT NULL,
@@ -185,6 +188,9 @@ CREATE TABLE purchase_items (
   product_id INT NOT NULL,
   unit_price DECIMAL(10,2) NOT NULL,
   quantity INT NOT NULL DEFAULT 1,
+  conversion_rate DECIMAL(10,4) NULL,
+  original_unit_price DECIMAL(10,2) NULL,
+  original_currency VARCHAR(10) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_purchase_items_purchase

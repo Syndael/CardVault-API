@@ -20,6 +20,17 @@ class PurchaseSchema(Schema):
         load_default=0
     )
     currency = fields.Str(load_default="EUR")
+    conversion_rate = fields.Decimal(
+        places=4,
+        as_string=True,
+        allow_none=True
+    )
+    original_amount = fields.Decimal(
+        places=2,
+        as_string=True,
+        allow_none=True
+    )
+    original_currency = fields.Str(allow_none=True)
     external_reference = fields.Str(allow_none=True)
     tracking_code = fields.Str(allow_none=True, load_default=None)
     shipping_status_id = fields.Int(allow_none=True, load_default=None)

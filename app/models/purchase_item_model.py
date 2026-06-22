@@ -24,6 +24,9 @@ class PurchaseItemModel(BaseModel):
         nullable=False,
         server_default="1"
     )
+    conversion_rate = db.Column(db.Numeric(10, 4))
+    original_unit_price = db.Column(db.Numeric(10, 2))
+    original_currency = db.Column(db.String(10))
     created_at = db.Column(
         db.TIMESTAMP,
         server_default=func.current_timestamp()

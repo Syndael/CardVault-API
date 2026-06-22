@@ -14,6 +14,17 @@ class PurchaseItemSchema(Schema):
         required=True
     )
     quantity = fields.Int(load_default=1)
+    conversion_rate = fields.Decimal(
+        places=4,
+        as_string=True,
+        allow_none=True
+    )
+    original_unit_price = fields.Decimal(
+        places=2,
+        as_string=True,
+        allow_none=True
+    )
+    original_currency = fields.Str(allow_none=True)
     created_at = fields.DateTime(dump_only=True)
     purchase = fields.Nested(PurchaseSchema, dump_only=True)
     product = fields.Nested(ProductSchema, dump_only=True)

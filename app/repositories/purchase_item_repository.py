@@ -9,6 +9,9 @@ class PurchaseItemRepository(CrudRepository):
         "purchase_id",
         "product_id",
         "unit_price",
-        "quantity"
+        "quantity",
+        "conversion_rate",
+        "original_unit_price",
+        "original_currency"
     )
     update_fields = create_fields

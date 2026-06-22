@@ -24,6 +24,9 @@ class PurchaseModel(BaseModel):
         db.String(10),
         server_default="EUR"
     )
+    conversion_rate = db.Column(db.Numeric(10, 4))
+    original_amount = db.Column(db.Numeric(10, 2))
+    original_currency = db.Column(db.String(10))
     external_reference = db.Column(db.String(255))
     tracking_code = db.Column(db.String(255))
     shipping_status_id = db.Column(
