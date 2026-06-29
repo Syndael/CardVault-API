@@ -403,15 +403,7 @@ def get_file_content(file_id):
     if not row:
         return jsonify({"message": "Not found"}), 404
 
-    # Debugging aid: print minimal info about the request and the stored path
-    try:
-        auth_present = 'Authorization' in request.headers
-    except Exception:
-        auth_present = False
-    print(f"get_file_content: file_id={file_id} auth_present={auth_present} db_file_path={row['file_path']}")
-
     resolved_path = resolve_file_path(row["file_path"])
-    print(f"get_file_content: resolved_path={resolved_path}")
     if not resolved_path:
         return jsonify({"message": "File not found"}), 404
 

@@ -627,3 +627,9 @@ ALTER TABLE wishlist_items
   AFTER condition_id;
 
 CREATE INDEX idx_wishlist_w_state ON wishlist_items(w_state);
+
+CREATE INDEX idx_history_inventory_recorded
+ON inventory_price_history(inventory_id, recorded_at DESC);
+
+CREATE INDEX idx_history_inventory_tracking_recorded
+ON inventory_price_history(inventory_id, product_price_tracking_id, recorded_at DESC);
