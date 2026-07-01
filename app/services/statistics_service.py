@@ -61,6 +61,11 @@ def summary():
         PurchaseModel
     ).scalar()
 
+    total_commission = _user_filter(
+        db.session.query(sa_func.coalesce(sa_func.sum(PurchaseModel.commission), 0)),
+        PurchaseModel
+    ).scalar()
+
     price_tracked = db.session.query(
         sa_func.count(InventoryPriceHistoryModel.inventory_id.distinct())
     ).scalar()
@@ -102,7 +107,8 @@ def summary():
         "total_purchases": int(total_purchases),
         "total_purchase_amount": float(total_purchase_amount),
         "total_shipping_costs": float(total_shipping),
-        "total_spent": float(total_purchase_amount) + float(total_shipping),
+        "total_commission": float(total_commission),
+        "total_spent": float(total_purchase_amount) + float(total_shipping) + float(total_commission),
         "total_balance": float(total_balance),
         "price_tracked_items": int(price_tracked),
     }
@@ -135,7 +141,7 @@ def inventory_value_by_type():
         TypeModel.short_name.label("type_short"),
         sa_func.count(InventoryModel.id).label("item_count"),
         sa_func.coalesce(sa_func.sum(InventoryModel.quantity), 0).label("total_quantity"),
-        sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity), 0).label("acquisition_value"),
+        sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)), 0).label("acquisition_value"),
         sa_func.coalesce(sa_func.sum(latest_price_subq.c.price * InventoryModel.quantity), 0).label("current_value"),
     ).select_from(InventoryModel)
     query = query.join(ProductModel, InventoryModel.product_id == ProductModel.id)
@@ -152,7 +158,7 @@ def inventory_value_by_type():
         query = query.filter(text("1=0"))
 
     query = query.group_by(TypeModel.id, TypeModel.name, TypeModel.short_name)
-    query = query.order_by(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity).desc())
+    query = query.order_by(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)).desc())
 
     rows = query.all()
     total_acq = sum(float(r.acquisition_value) for r in rows)
@@ -191,7 +197,7 @@ def inventory_value_detail():
         ProductModel.product_number,
         TypeModel.name.label("type_name"),
         TypeModel.short_name.label("type_short"),
-        PurchaseItemModel.unit_price,
+        (PurchaseItemModel.unit_price / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)).label("unit_price"),
         PurchaseItemModel.quantity.label("item_qty"),
     ]
 
@@ -334,7 +340,7 @@ def collections_top(limit=20):
         sa_func.count(InventoryModel.id).label("item_count"),
         sa_func.coalesce(sa_func.sum(InventoryModel.quantity), 0).label("total_qty"),
         trans_subq.c.name.label("col_name"),
-        sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity), 0).label("acquisition_cost"),
+        sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)), 0).label("acquisition_cost"),
         sa_func.coalesce(sa_func.sum(latest_price_subq.c.price * InventoryModel.quantity), 0).label("current_value"),
     ]
 
@@ -395,6 +401,7 @@ def purchases_by_entity():
             sa_func.count(PurchaseModel.id).label("purchase_count"),
             sa_func.coalesce(sa_func.sum(PurchaseModel.total_amount), 0).label("total_amount"),
             sa_func.coalesce(sa_func.sum(PurchaseModel.shipping_cost), 0).label("total_shipping"),
+            sa_func.coalesce(sa_func.sum(PurchaseModel.commission), 0).label("total_commission"),
         ]
         query = db.session.query(*cols).select_from(EntityModel)
         query = query.join(PurchaseModel, PurchaseModel.entity_id == entity_expr)
@@ -419,12 +426,13 @@ def purchases_by_entity():
 
     entity_map = {e.entity_id: e for e in entities}
 
-    children_value = defaultdict(lambda: {"count": 0, "amount": 0.0, "shipping": 0.0})
+    children_value = defaultdict(lambda: {"count": 0, "amount": 0.0, "shipping": 0.0, "commission": 0.0})
     for pid, children in parent_children.items():
         for c in children:
             children_value[pid]["count"] += int(c.purchase_count)
             children_value[pid]["amount"] += float(c.total_amount)
             children_value[pid]["shipping"] += float(c.total_shipping)
+            children_value[pid]["commission"] += float(c.total_commission)
 
     result = []
     for e in entities:
@@ -435,6 +443,7 @@ def purchases_by_entity():
         total_count = int(e.purchase_count) + cv.get("count", 0)
         total_amount = float(e.total_amount) + cv.get("amount", 0.0)
         total_shipping = float(e.total_shipping) + cv.get("shipping", 0.0)
+        total_commission = float(e.total_commission) + cv.get("commission", 0.0)
 
         children_list = []
         child_entities = parent_children.get(e.entity_id, [])
@@ -445,6 +454,7 @@ def purchases_by_entity():
                 "purchase_count": int(child.purchase_count),
                 "total_amount": float(child.total_amount),
                 "total_shipping": float(child.total_shipping),
+                "total_commission": float(child.total_commission),
             })
 
         result.append({
@@ -453,7 +463,8 @@ def purchases_by_entity():
             "purchase_count": total_count,
             "total_amount": round(total_amount, 2),
             "total_shipping": round(total_shipping, 2),
-            "total_spent": round(total_amount + total_shipping, 2),
+            "total_commission": round(total_commission, 2),
+            "total_spent": round(total_amount + total_shipping + total_commission, 2),
             "children": children_list,
         })
 
@@ -470,6 +481,7 @@ def purchases_by_month():
         sa_func.count(PurchaseModel.id).label("count"),
         sa_func.coalesce(sa_func.sum(PurchaseModel.total_amount), 0).label("total_amount"),
         sa_func.coalesce(sa_func.sum(PurchaseModel.shipping_cost), 0).label("total_shipping"),
+        sa_func.coalesce(sa_func.sum(PurchaseModel.commission), 0).label("total_commission"),
     ]
 
     query = db.session.query(*cols).select_from(PurchaseModel)
@@ -492,7 +504,8 @@ def purchases_by_month():
             "count": int(r.count),
             "total_amount": float(r.total_amount),
             "total_shipping": float(r.total_shipping),
-            "total_spent": float(r.total_amount) + float(r.total_shipping),
+            "total_commission": float(r.total_commission),
+            "total_spent": float(r.total_amount) + float(r.total_shipping) + float(r.total_commission),
         })
 
     return months
@@ -664,10 +677,10 @@ def top_profit_items(limit=10):
         CollectionModel.code.label("col_code"),
         pt.c.name.label("product_name"),
         TypeModel.short_name.label("type_short"),
-        PurchaseItemModel.unit_price,
+        (PurchaseItemModel.unit_price / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)).label("unit_price"),
         latest.c.price,
-        (sa_func.coalesce(latest.c.price, 0) - sa_func.coalesce(PurchaseItemModel.unit_price, 0)).label("unit_profit"),
-        ((sa_func.coalesce(latest.c.price, 0) - sa_func.coalesce(PurchaseItemModel.unit_price, 0)) * InventoryModel.quantity).label("total_profit"),
+        (sa_func.coalesce(latest.c.price, 0) - sa_func.coalesce(PurchaseItemModel.unit_price / sa_func.coalesce(PurchaseItemModel.split_quantity, 1), 0)).label("unit_profit"),
+        ((sa_func.coalesce(latest.c.price, 0) - sa_func.coalesce(PurchaseItemModel.unit_price / sa_func.coalesce(PurchaseItemModel.split_quantity, 1), 0)) * InventoryModel.quantity).label("total_profit"),
     ).select_from(InventoryModel)
     query = query.join(ProductModel, InventoryModel.product_id == ProductModel.id)
     query = query.join(TypeModel, ProductModel.product_type_id == TypeModel.id)
@@ -683,7 +696,7 @@ def top_profit_items(limit=10):
 
     query = query.filter(PurchaseItemModel.unit_price.isnot(None))
     query = query.filter(latest.c.price.isnot(None))
-    query = query.order_by(((sa_func.coalesce(latest.c.price, 0) - sa_func.coalesce(PurchaseItemModel.unit_price, 0)) * InventoryModel.quantity).desc())
+    query = query.order_by(((sa_func.coalesce(latest.c.price, 0) - sa_func.coalesce(PurchaseItemModel.unit_price / sa_func.coalesce(PurchaseItemModel.split_quantity, 1), 0)) * InventoryModel.quantity).desc())
     query = query.limit(limit)
 
     rows = query.all()
@@ -744,10 +757,11 @@ def avg_monthly_spending():
 
     cols = [
         sa_func.date_format(PurchaseModel.purchase_date, "%Y-%m").label("month"),
-        sa_func.avg(PurchaseModel.total_amount + sa_func.coalesce(PurchaseModel.shipping_cost, 0)).label("avg_spent"),
+        sa_func.avg(PurchaseModel.total_amount + sa_func.coalesce(PurchaseModel.shipping_cost, 0) + sa_func.coalesce(PurchaseModel.commission, 0)).label("avg_spent"),
         sa_func.count(PurchaseModel.id).label("count"),
         sa_func.coalesce(sa_func.sum(PurchaseModel.total_amount), 0).label("total_amount"),
         sa_func.coalesce(sa_func.sum(PurchaseModel.shipping_cost), 0).label("total_shipping"),
+        sa_func.coalesce(sa_func.sum(PurchaseModel.commission), 0).label("total_commission"),
     ]
 
     query = db.session.query(*cols).select_from(PurchaseModel)
@@ -769,6 +783,7 @@ def avg_monthly_spending():
             "avg_spent": round(float(r.avg_spent), 2),
             "total_amount": float(r.total_amount),
             "total_shipping": float(r.total_shipping),
+            "total_commission": float(r.total_commission),
         }
         for r in rows
     ]
@@ -784,7 +799,7 @@ def best_investment_entities(limit=None):
         EntityModel.id.label("entity_id"),
         EntityModel.name,
         sa_func.count(InventoryModel.id).label("items_count"),
-        sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity), 0).label("acquisition_cost"),
+        sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)), 0).label("acquisition_cost"),
         sa_func.coalesce(sa_func.sum(latest.c.price * InventoryModel.quantity), 0).label("current_value"),
     ).select_from(EntityModel)
     query = query.join(PurchaseModel, PurchaseModel.entity_id == EntityModel.id)
@@ -798,7 +813,7 @@ def best_investment_entities(limit=None):
         query = query.filter(text("1=0"))
 
     query = query.group_by(EntityModel.id, EntityModel.name)
-    query = query.order_by((sa_func.coalesce(sa_func.sum(latest.c.price * InventoryModel.quantity), 0) - sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity), 0)).desc())
+    query = query.order_by((sa_func.coalesce(sa_func.sum(latest.c.price * InventoryModel.quantity), 0) - sa_func.coalesce(sa_func.sum(PurchaseItemModel.unit_price * InventoryModel.quantity / sa_func.coalesce(PurchaseItemModel.split_quantity, 1)), 0)).desc())
     if limit is not None:
         query = query.limit(limit)
 

@@ -48,6 +48,7 @@ class InventorySchema(Schema):
 class ProductLiteSchema(Schema):
     id = fields.Int()
     product_number = fields.Str()
+    completion_group = fields.Str()
     product_type = fields.Nested(TypeSchema)
     translations = fields.Nested("ProductTranslationLiteSchema", many=True)
 
@@ -106,7 +107,8 @@ class InventoryListSchema(Schema):
 
     def get_acquisition_price(self, obj):
         if obj.purchase_item and obj.purchase_item.unit_price is not None:
-            return float(obj.purchase_item.unit_price)
+            split = obj.purchase_item.split_quantity or 1
+            return float(obj.purchase_item.unit_price) / split
         if obj.purchase and obj.purchase.total_amount is not None:
             return float(obj.purchase.total_amount)
         return None

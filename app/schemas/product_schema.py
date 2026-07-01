@@ -14,6 +14,7 @@ class ProductSchema(Schema):
     force_download    = BitBool(allow_none=True)
     is_verified       = BitBool(load_default=False)
     is_manual         = BitBool(load_default=False)
+    completion_group  = fields.Str(load_default="standard")
     created_at        = fields.DateTime(dump_only=True)
     collection        = fields.Nested(CollectionSchema, dump_only=True)
     product_type      = fields.Nested(TypeSchema,       dump_only=True)

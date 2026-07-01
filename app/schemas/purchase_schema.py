@@ -19,9 +19,14 @@ class PurchaseSchema(Schema):
         as_string=True,
         load_default=0
     )
+    commission = fields.Decimal(
+        places=2,
+        as_string=True,
+        load_default=0
+    )
     currency = fields.Str(load_default="EUR")
     conversion_rate = fields.Decimal(
-        places=4,
+        places=8,
         as_string=True,
         allow_none=True
     )

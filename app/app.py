@@ -5,6 +5,7 @@ from app.models.user_model import UserModel
 from app.models.user_role_model import UserRoleModel
 from app.models.role_model import RoleModel
 from app.controllers.collection_controller import collection_blueprint
+from app.controllers.collection_tracking_controller import collection_tracking_blueprint
 from app.controllers.collection_translation_controller import collection_translation_blueprint
 from app.controllers.entity_controller import entity_blueprint
 from app.controllers.file_controller import file_blueprint
@@ -86,6 +87,7 @@ def create_app():
     register_protected(collection_translation_blueprint, "/api/collection-translations")
     register_protected(language_blueprint, "/api/languages")
     register_protected(collection_blueprint, "/api/collections")
+    register_protected(collection_tracking_blueprint, "/api/collection-tracking")
     register_protected(proxy_blueprint, "/api/proxy")
     register_protected(product_blueprint, "/api/products")
     register_protected(product_catalog_blueprint, "/api/product-catalog")

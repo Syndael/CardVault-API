@@ -10,6 +10,7 @@ class PurchaseItemRepository(CrudRepository):
         "product_id",
         "unit_price",
         "quantity",
+        "split_quantity",
         "conversion_rate",
         "original_unit_price",
         "original_currency"

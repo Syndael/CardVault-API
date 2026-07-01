@@ -20,11 +20,15 @@ class PurchaseModel(BaseModel):
         db.Numeric(10, 2),
         server_default="0"
     )
+    commission = db.Column(
+        db.Numeric(10, 2),
+        server_default="0"
+    )
     currency = db.Column(
         db.String(10),
         server_default="EUR"
     )
-    conversion_rate = db.Column(db.Numeric(10, 4))
+    conversion_rate = db.Column(db.Numeric(10, 8))
     original_amount = db.Column(db.Numeric(10, 2))
     original_currency = db.Column(db.String(10))
     external_reference = db.Column(db.String(255))

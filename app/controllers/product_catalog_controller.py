@@ -251,6 +251,7 @@ AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
                 pt.name AS product_name,
                 pt.name_alter AS product_name_alter,
                 CAST(p.is_verified AS UNSIGNED) AS is_verified,
+                p.completion_group AS completion_group,
                 f.id AS file_id,
                 tracker.url AS tracker_url
             {CATALOG_SELECT_FROM} {CATALOG_WHERE} {search_sql}
@@ -281,6 +282,7 @@ AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
                 "product_is_manual": row["product_is_manual"] == 1,
                 "force_download": row["force_download"] == 1,
                 "is_verified": row["is_verified"] == 1,
+                "completion_group": row["completion_group"],
                 "collection_name": row["collection_name"],
                 "product_number": row["product_number"],
                 "product_name": format_name(

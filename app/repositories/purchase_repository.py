@@ -30,6 +30,7 @@ class PurchaseRepository(CrudRepository):
         "delivery_date",
         "total_amount",
         "shipping_cost",
+        "commission",
         "currency",
         "conversion_rate",
         "original_amount",

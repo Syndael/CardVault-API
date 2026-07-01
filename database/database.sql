@@ -633,3 +633,42 @@ ON inventory_price_history(inventory_id, recorded_at DESC);
 
 CREATE INDEX idx_history_inventory_tracking_recorded
 ON inventory_price_history(inventory_id, product_price_tracking_id, recorded_at DESC);
+
+ALTER TABLE products
+  ADD COLUMN completion_group VARCHAR(20) NOT NULL DEFAULT 'standard'
+  AFTER force_download;
+
+CREATE INDEX idx_products_completion_group
+ON products(collection_id, completion_group);
+
+CREATE TABLE user_collection_tracking (
+  user_id INT NOT NULL,
+  collection_id INT NOT NULL,
+  tracking_mode VARCHAR(20) NOT NULL DEFAULT 'standard',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (user_id, collection_id),
+
+  CONSTRAINT fk_uct_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_uct_collection
+    FOREIGN KEY (collection_id)
+    REFERENCES collections(id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX idx_uct_collection ON user_collection_tracking(collection_id);
+
+ALTER TABLE purchases
+    ADD COLUMN commission DECIMAL(10, 2) NOT NULL DEFAULT 0
+    AFTER shipping_cost;
+
+ALTER TABLE purchase_items
+    ADD COLUMN split_quantity INT NOT NULL DEFAULT 1
+    AFTER quantity;
+
+ALTER TABLE purchases CHANGE COLUMN conversion_rate conversion_rate DECIMAL(10,8) NULL DEFAULT NULL AFTER currency;
+ALTER TABLE purchase_items CHANGE COLUMN conversion_rate conversion_rate DECIMAL(10,8) NULL DEFAULT NULL AFTER split_quantity;

@@ -28,6 +28,7 @@ class ProductModel(BaseModel):
     force_download  = db.Column(BitBoolean)
     is_verified     = db.Column(BitBoolean, server_default="0")
     is_manual       = db.Column(BitBoolean, server_default="0")
+    completion_group = db.Column(db.String(20), nullable=False, server_default="standard")
     created_at      = db.Column(db.TIMESTAMP, server_default=func.current_timestamp())
 
     collection      = db.relationship("CollectionModel", backref="products", lazy=True)

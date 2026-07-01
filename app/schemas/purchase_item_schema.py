@@ -14,8 +14,9 @@ class PurchaseItemSchema(Schema):
         required=True
     )
     quantity = fields.Int(load_default=1)
+    split_quantity = fields.Int(load_default=1)
     conversion_rate = fields.Decimal(
-        places=4,
+        places=8,
         as_string=True,
         allow_none=True
     )
