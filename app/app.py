@@ -1,4 +1,5 @@
-from flask import Flask, g, request
+from flask import Flask, g, jsonify, request
+from werkzeug.exceptions import BadRequest, NotFound
 
 from app.config.config import Config
 from app.models.user_model import UserModel
@@ -38,6 +39,18 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     app.json.ensure_ascii = False
+
+    @app.errorhandler(BadRequest)
+    def bad_request(e):
+        return jsonify({"error": str(e.description)}), 400
+
+    @app.errorhandler(NotFound)
+    def not_found(e):
+        return jsonify({"error": "Not found"}), 404
+
+    @app.errorhandler(400)
+    def bad_request_generic(e):
+        return jsonify({"error": str(e.description or "Bad request")}), 400
 
     @app.after_request
     def add_cors_headers(response):
