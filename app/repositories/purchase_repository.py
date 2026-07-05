@@ -3,8 +3,11 @@ from sqlalchemy.orm import subqueryload
 
 from flask import request, g
 
+from app.database.session import db
 from app.models.entity_model import EntityModel
 from app.models.file_model import FileModel
+from app.models.product_model import ProductModel
+from app.models.purchase_item_model import PurchaseItemModel
 from app.models.purchase_model import PurchaseModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
@@ -57,12 +60,33 @@ class PurchaseRepository(CrudRepository):
             product_id = request.args.get("product_id")
         except RuntimeError:
             product_id = None
-        if product_id and hasattr(cls.model, "product_id"):
+        try:
+            collection_id = request.args.get("collection_id")
+        except RuntimeError:
+            collection_id = None
+        item_conditions = []
+        if product_id:
             try:
                 pid = int(product_id)
-                query = query.filter(cls.model.product_id == pid)
+                subq = db.session.query(PurchaseItemModel.purchase_id).filter(
+                    PurchaseItemModel.product_id == pid
+                ).subquery()
+                item_conditions.append(PurchaseModel.id.in_(subq))
             except ValueError:
                 pass
+        if collection_id:
+            try:
+                cid = int(collection_id)
+                subq = db.session.query(PurchaseItemModel.purchase_id).join(
+                    ProductModel, ProductModel.id == PurchaseItemModel.product_id
+                ).filter(
+                    ProductModel.collection_id == cid
+                ).subquery()
+                item_conditions.append(PurchaseModel.id.in_(subq))
+            except ValueError:
+                pass
+        if item_conditions:
+            query = query.filter(or_(*item_conditions))
 
         try:
             date_from = request.args.get("date_from")
@@ -113,14 +137,18 @@ class PurchaseRepository(CrudRepository):
             q = None
         if q:
             search = f"%{q}%"
-            query = query.outerjoin(EntityModel, cls.model.entity_id == EntityModel.id)
-            query = query.filter(
-                or_(
-                    cls.model.external_reference.ilike(search),
-                    cls.model.tracking_code.ilike(search),
-                    EntityModel.name.ilike(search),
-                    cast(cls.model.purchase_date, String(19)).ilike(search),
+            conditions = [
+                cls.model.external_reference.ilike(search),
+                cls.model.tracking_code.ilike(search),
+                EntityModel.name.ilike(search),
+                cast(cls.model.purchase_date, String(19)).ilike(search),
+            ]
+            if q.isdigit() and len(q) == 8:
+                formatted = f"{q[:4]}-{q[4:6]}-{q[6:8]}"
+                conditions.append(
+                    cast(cls.model.purchase_date, String(19)).ilike(f"%{formatted}%")
                 )
-            )
+            query = query.outerjoin(EntityModel, cls.model.entity_id == EntityModel.id)
+            query = query.filter(or_(*conditions))
 
         return paginate_query(query, page, per_page)

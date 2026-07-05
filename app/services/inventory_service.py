@@ -1,7 +1,11 @@
 from flask import g
-from sqlalchemy import text
+from sqlalchemy import and_, text
 
 from app.database.session import db
+from app.models.inventory_model import InventoryModel
+from app.models.inventory_tag_model import InventoryTagModel
+from app.models.product_model import ProductModel
+from app.models.tag_model import TagModel
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.crud_service import CrudService
 
@@ -155,3 +159,116 @@ class InventoryService(CrudService):
             return None
         cls.repository.delete(entity)
         return True
+
+    @classmethod
+    def bulk_create(cls, data):
+        user = getattr(g, "current_user", None)
+        if not user:
+            return {"success": False, "error": "No authenticated user"}
+
+        collection_id = data.get("collection_id")
+        language_id = data.get("language_id")
+        condition_id = data.get("condition_id")
+        items = data.get("items", [])
+
+        if not collection_id:
+            return {"success": False, "error": "collection_id is required"}
+        if not items:
+            return {"success": False, "error": "items list is required"}
+
+        # Resolve tag names — support both tag_name (legacy) and tag_names (array)
+        tag_names = data.get("tag_names") or []
+        if not tag_names and data.get("tag_name"):
+            tag_names = [data.get("tag_name")]
+        tag_names = [t.strip() for t in tag_names if t and t.strip()]
+
+        tags = []
+        for name in tag_names:
+            tag = TagModel.query.filter(TagModel.name == name).first()
+            if not tag:
+                tag = TagModel(name=name)
+                db.session.add(tag)
+                db.session.flush()
+            tags.append(tag)
+
+        results = []
+        for item in items:
+            product_number = str(item.get("product_number", "")).strip()
+            quantity = int(item.get("quantity", 1))
+
+            if not product_number:
+                results.append({"product_number": product_number, "status": "error", "error": "product_number is required"})
+                continue
+
+            product = ProductModel.query.filter(
+                ProductModel.collection_id == collection_id,
+                ProductModel.product_number == product_number
+            ).first()
+
+            if not product:
+                results.append({"product_number": product_number, "status": "error", "error": "Product not found in collection"})
+                continue
+
+            lang_cond = [InventoryModel.product_id == product.id]
+            if language_id:
+                lang_cond.append(InventoryModel.language_id == int(language_id))
+            else:
+                lang_cond.append(InventoryModel.language_id.is_(None))
+            if condition_id:
+                lang_cond.append(InventoryModel.condition_id == int(condition_id))
+            else:
+                lang_cond.append(InventoryModel.condition_id.is_(None))
+
+            # Check for existing entry with any of the specified tags
+            existing = None
+            if tags:
+                existing = (
+                    InventoryModel.query
+                    .join(InventoryTagModel, InventoryTagModel.inventory_id == InventoryModel.id)
+                    .filter(
+                        and_(*lang_cond),
+                        InventoryTagModel.tag_id.in_([t.id for t in tags])
+                    )
+                    .first()
+                )
+
+            if existing:
+                existing.quantity = (existing.quantity or 0) + quantity
+                # Link any tags not already present
+                linked_ids = {t.id for t in existing.tags}
+                for t in tags:
+                    if t.id not in linked_ids:
+                        db.session.add(InventoryTagModel(inventory_id=existing.id, tag_id=t.id))
+                results.append({
+                    "product_number": product_number,
+                    "product_id": product.id,
+                    "status": "updated",
+                    "inventory_id": existing.id,
+                    "total_quantity": existing.quantity
+                })
+            else:
+                new_entry = InventoryModel(
+                    product_id=product.id,
+                    collection_id=collection_id,
+                    quantity=quantity,
+                    user_id=user.id
+                )
+                if language_id:
+                    new_entry.language_id = int(language_id)
+                if condition_id:
+                    new_entry.condition_id = int(condition_id)
+                db.session.add(new_entry)
+                db.session.flush()
+
+                for t in tags:
+                    db.session.add(InventoryTagModel(inventory_id=new_entry.id, tag_id=t.id))
+                results.append({
+                    "product_number": product_number,
+                    "product_id": product.id,
+                    "status": "created",
+                    "inventory_id": new_entry.id,
+                    "total_quantity": quantity
+                })
+
+        db.session.commit()
+        return {"success": True, "results": results}

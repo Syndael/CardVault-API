@@ -107,3 +107,5 @@ INSERT INTO types (type, name) VALUES
 ('w_state', 'inactivo'),
 ('w_state', 'comprado'),
 ('w_state', 'notificado');
+
+INSERT INTO settings (setting_key, setting_value) VALUES ('bulk.import.default.tags', 'Almacén');

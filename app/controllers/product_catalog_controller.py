@@ -138,6 +138,7 @@ AND (
         )
     )
 )
+AND (:has_image = -1 OR (:has_image = 1 AND f.id IS NOT NULL) OR (:has_image = 0 AND f.id IS NULL))
 """
 
 CATALOG_SELECT_FROM = (
@@ -170,12 +171,14 @@ def get_products():
     raw_col_code = (request.args.get("collection_code") or "").strip()
     raw_prod_number = (request.args.get("product_number") or "").strip()
     raw_prod_name = (request.args.get("product_name") or "").strip()
+    raw_has_image = request.args.get("has_image")
     params = {
         "is_verified": int(raw_verified) if raw_verified in ("0", "1") else -1,
         "is_manual": int(raw_manual) if raw_manual in ("0", "1") else -1,
         "product_type_id": int(raw_type_id) if raw_type_id else -1,
         "product_format_id": int(raw_format_id) if raw_format_id else -1,
         "pending_sync": 1 if raw_pending == "1" else 0,
+        "has_image": int(raw_has_image) if raw_has_image in ("0", "1") else -1,
         "collection_code": raw_col_code,
         "product_number": raw_prod_number,
         "product_number_like": f"%{raw_prod_number}%",
@@ -194,18 +197,14 @@ def get_products():
         params["ft_q"] = " ".join(f"+{t}" for t in clean)
 
     has_text_filters = bool(search_terms) or bool(raw_prod_name)
+    use_full_joins = has_text_filters or raw_has_image in ("0", "1")
 
     # COUNT query: skip window-function joins when possible
-    if search_terms:
-        total = db.session.execute(
-            text(f"SELECT COUNT(*) {CATALOG_SELECT_FROM} {CATALOG_WHERE} {search_sql}"),
-            params
-        ).scalar()
-    elif raw_prod_name:
-        total = db.session.execute(
-            text(f"SELECT COUNT(*) {CATALOG_SELECT_FROM} {CATALOG_WHERE}"),
-            params
-        ).scalar()
+    if use_full_joins:
+        count_sql = f"SELECT COUNT(*) {CATALOG_SELECT_FROM} {CATALOG_WHERE}"
+        if search_sql:
+            count_sql += f" {search_sql}"
+        total = db.session.execute(text(count_sql), params).scalar()
     else:
         total = db.session.execute(
             text(f"""

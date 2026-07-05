@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from app.models.collection_model import CollectionModel
 from app.models.inventory_model import InventoryModel
 from app.models.inventory_price_history_model import InventoryPriceHistoryModel
-from app.models.inventory_tag_model import InventoryTagModel
+from app.models.file_model import FileModel
 from app.models.language_model import LanguageModel
 from app.models.product_model import ProductModel
 from app.models.product_price_tracking_model import ProductPriceTrackingModel
@@ -168,17 +168,18 @@ class InventoryRepository(CrudRepository):
             tag_names = [t.strip() for t in tag_name.split(",") if t.strip()]
             for tn in tag_names:
                 query = query.filter(
-                    exists(
-                        select(1)
-                        .select_from(InventoryTagModel)
-                        .join(TagModel)
-                        .where(
-                            and_(
-                                InventoryTagModel.inventory_id == InventoryModel.id,
-                                TagModel.name.ilike(f"%{tn}%")
-                            )
-                        )
-                    )
+                    InventoryModel.tags.any(TagModel.name.ilike(f"%{tn}%"))
+                )
+
+        try:
+            exclude_tag_name = request.args.get("exclude_tag_name", "").strip()
+        except RuntimeError:
+            exclude_tag_name = ""
+        if exclude_tag_name:
+            exclude_tags = [t.strip() for t in exclude_tag_name.split(",") if t.strip()]
+            for tn in exclude_tags:
+                query = query.filter(
+                    ~InventoryModel.tags.any(TagModel.name.ilike(f"%{tn}%"))
                 )
 
         try:
@@ -194,6 +195,38 @@ class InventoryRepository(CrudRepository):
             posted_instagram_val = ""
         if posted_instagram_val in ("1", "0"):
             query = query.filter(cls.model.posted_instagram == (posted_instagram_val == "1"))
+
+        try:
+            has_image_val = request.args.get("has_image", "").strip()
+        except RuntimeError:
+            has_image_val = ""
+        if has_image_val == "product_yes":
+            subq = select(FileModel.id).where(FileModel.product_id == cls.model.product_id).correlate(InventoryModel.__table__)
+            query = query.filter(exists(subq))
+        elif has_image_val == "product_no":
+            subq = select(FileModel.id).where(FileModel.product_id == cls.model.product_id).correlate(InventoryModel.__table__)
+            query = query.filter(~exists(subq))
+        elif has_image_val == "inventory_yes":
+            subq = select(FileModel.id).where(FileModel.inventory_id == cls.model.id).correlate(InventoryModel.__table__)
+            query = query.filter(exists(subq))
+        elif has_image_val == "inventory_no":
+            subq = select(FileModel.id).where(FileModel.inventory_id == cls.model.id).correlate(InventoryModel.__table__)
+            query = query.filter(~exists(subq))
+
+        try:
+            has_price_val = request.args.get("has_price", "").strip()
+        except RuntimeError:
+            has_price_val = ""
+        if has_price_val in ("1", "0"):
+            subq = (
+                select(InventoryPriceHistoryModel.id)
+                .where(InventoryPriceHistoryModel.inventory_id == cls.model.id)
+                .correlate(InventoryModel.__table__)
+            )
+            if has_price_val == "1":
+                query = query.filter(exists(subq))
+            else:
+                query = query.filter(~exists(subq))
 
         try:
             raw_sort = (request.args.get("sort") or "newest").strip()
