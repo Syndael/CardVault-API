@@ -219,26 +219,17 @@ class InventoryService(CrudService):
             else:
                 lang_cond.append(InventoryModel.condition_id.is_(None))
 
-            # Check for existing entry with any of the specified tags
+            # Look for existing entry with same product + language + condition + tags
+            requested_tag_ids = {t.id for t in tags}
             existing = None
-            if tags:
-                existing = (
-                    InventoryModel.query
-                    .join(InventoryTagModel, InventoryTagModel.inventory_id == InventoryModel.id)
-                    .filter(
-                        and_(*lang_cond),
-                        InventoryTagModel.tag_id.in_([t.id for t in tags])
-                    )
-                    .first()
-                )
+            for candidate in InventoryModel.query.filter(and_(*lang_cond)).all():
+                candidate_tag_ids = {t.id for t in candidate.tags}
+                if candidate_tag_ids == requested_tag_ids:
+                    existing = candidate
+                    break
 
             if existing:
                 existing.quantity = (existing.quantity or 0) + quantity
-                # Link any tags not already present
-                linked_ids = {t.id for t in existing.tags}
-                for t in tags:
-                    if t.id not in linked_ids:
-                        db.session.add(InventoryTagModel(inventory_id=existing.id, tag_id=t.id))
                 results.append({
                     "product_number": product_number,
                     "product_id": product.id,

@@ -70,7 +70,7 @@ class PurchaseRepository(CrudRepository):
                 pid = int(product_id)
                 subq = db.session.query(PurchaseItemModel.purchase_id).filter(
                     PurchaseItemModel.product_id == pid
-                ).subquery()
+                ).scalar_subquery()
                 item_conditions.append(PurchaseModel.id.in_(subq))
             except ValueError:
                 pass
@@ -81,7 +81,7 @@ class PurchaseRepository(CrudRepository):
                     ProductModel, ProductModel.id == PurchaseItemModel.product_id
                 ).filter(
                     ProductModel.collection_id == cid
-                ).subquery()
+                ).scalar_subquery()
                 item_conditions.append(PurchaseModel.id.in_(subq))
             except ValueError:
                 pass
