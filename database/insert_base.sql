@@ -31,7 +31,8 @@ INSERT INTO types (type, name) VALUES
 ('p_status', 'Pedido'),
 ('p_status', 'Enviado'),
 ('p_status', 'Terminado'),
-('p_status', 'Cancelado');
+('p_status', 'Cancelado'),
+('p_status', 'Revisar');
 
 INSERT INTO price_sources (
   name,
