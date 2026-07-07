@@ -34,6 +34,23 @@ def login():
     })
 
 
+@auth_blueprint.route("/user/<int:user_id>", methods=["GET"])  # /api/auth/user/<id>
+@auth.require_auth
+def get_user(user_id):
+    user = UserService.get_by_id(user_id)
+    if not user:
+        return jsonify({"message": "Not found"}), 404
+    return jsonify({"email": user.email, "telegram_id": user.telegram_id})
+
+
+@auth_blueprint.route("/users", methods=["GET"])  # /api/auth/users
+@auth.require_role("admin")
+def list_users():
+    users = UserService.get_all()
+    schema = UserSchema(many=True)
+    return jsonify(schema.dump(users))
+
+
 @auth_blueprint.route("/logout", methods=["POST"])  # /api/auth/logout
 def logout():
     token = auth.get_token_from_header()
