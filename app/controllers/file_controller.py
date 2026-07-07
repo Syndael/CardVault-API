@@ -147,7 +147,7 @@ def download_manual_file():
 @file_blueprint.route('/by-inventory/<int:inventory_id>', methods=['GET'], strict_slashes=False)
 def get_inventory_files(inventory_id):
     from app.models.file_model import FileModel
-    files = FileModel.query.filter_by(inventory_id=inventory_id).all()
+    files = FileModel.query.filter_by(inventory_id=inventory_id).order_by(FileModel.sort_order).all()
     schema = FileSchema(many=True)
     return jsonify(schema.dump(files))
 
@@ -158,6 +158,60 @@ def get_purchase_files(purchase_id):
     files = FileModel.query.filter_by(purchase_id=purchase_id).all()
     schema = FileSchema(many=True)
     return jsonify(schema.dump(files))
+
+
+@file_blueprint.route('/by-inventory/<int:inventory_id>/reorder', methods=['PATCH'], strict_slashes=False)
+@auth.require_role("inventory_manage", "admin")
+def reorder_inventory_files(inventory_id):
+    from app.database.session import db
+    from app.models.file_model import FileModel
+
+    body = request.get_json() or {}
+    file_ids = body.get("file_ids", [])
+    if not isinstance(file_ids, list):
+        return jsonify({"message": "file_ids must be a list"}), 400
+
+    primary_id = body.get("primary_id")
+
+    for idx, fid in enumerate(file_ids):
+        file = FileModel.query.filter_by(id=fid, inventory_id=inventory_id).first()
+        if file:
+            file.sort_order = idx
+            file.is_primary = (fid == primary_id)
+            ig_key = f"ig_order_{fid}"
+            if ig_key in body:
+                raw = body[ig_key]
+                file.instagram_sort_order = int(raw) if raw not in (None, "", 0) else None
+            elif body.get("reset_ig_orders"):
+                file.instagram_sort_order = None
+    db.session.commit()
+
+    files = FileModel.query.filter_by(inventory_id=inventory_id).order_by(FileModel.sort_order).all()
+    schema = FileSchema(many=True)
+    return jsonify(schema.dump(files))
+
+
+@file_blueprint.route('/<int:file_id>/set-primary', methods=['PATCH'], strict_slashes=False)
+@auth.require_role("inventory_manage", "admin")
+def set_primary_file(file_id):
+    from app.database.session import db
+    from app.models.file_model import FileModel
+
+    file = FileModel.query.get(file_id)
+    if not file:
+        return jsonify({"message": "Not found"}), 404
+
+    inventory_id = file.inventory_id
+    if not inventory_id:
+        return jsonify({"message": "File is not linked to an inventory item"}), 400
+
+    all_files = FileModel.query.filter_by(inventory_id=inventory_id).all()
+    for f in all_files:
+        f.is_primary = (f.id == file.id)
+    db.session.commit()
+
+    schema = FileSchema()
+    return jsonify(schema.dump(file))
 
 
 def _resolve_path_pattern(pattern, **variables):
@@ -226,13 +280,22 @@ def upload_inventory_file():
     except Exception as e:
         return jsonify({'message': 'Error saving file', 'error': str(e)}), 500
 
+    from app.database.session import db as _db
+    from app.models.file_model import FileModel as FileModelCls
+    current_max = _db.session.query(_db.func.max(FileModelCls.sort_order)).filter(
+        FileModelCls.inventory_id == inventory_id
+    ).scalar() or 0
+    if current_max < 0:
+        current_max = 0
+
     payload = {
         'inventory_id': inventory_id,
         'original_name': original_name,
         'stored_name': stored_name,
         'file_path': os.path.join(base_dir, sub_dir, stored_name),
         'file_type_id': _get_image_type_id(),
-        'file_size': os.path.getsize(target_path)
+        'file_size': os.path.getsize(target_path),
+        'sort_order': current_max + 1,
     }
 
     try:

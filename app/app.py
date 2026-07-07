@@ -16,6 +16,7 @@ from app.controllers.inventory_price_history_archive_controller import inventory
 from app.controllers.inventory_url_controller import inventory_url_blueprint
 from app.controllers.inventory_tag_controller import inventory_tag_blueprint
 from app.controllers.language_controller import language_blueprint
+from app.controllers.notification_controller import notification_blueprint
 from app.controllers.price_source_controller import price_source_blueprint
 from app.controllers.proxy_controller import proxy_blueprint
 from app.controllers.product_catalog_controller import product_catalog_blueprint
@@ -24,6 +25,7 @@ from app.controllers.product_controller import product_blueprint
 from app.controllers.product_price_tracking_controller import product_price_tracking_blueprint
 from app.controllers.product_translation_controller import product_translation_blueprint
 from app.controllers.purchase_controller import purchase_blueprint
+from app.controllers.publication_schedule_controller import publication_schedule_blueprint
 from app.controllers.purchase_item_controller import purchase_item_blueprint
 from app.controllers.scheduled_task_controller import scheduled_task_blueprint
 from app.controllers.setting_controller import setting_blueprint
@@ -112,6 +114,7 @@ def create_app():
     register_protected(inventory_blueprint, "/api/inventory")
     register_protected(inventory_tag_blueprint, "/api/inventory")
     register_protected(file_blueprint, "/api/files")
+    register_protected(publication_schedule_blueprint, "/api/publications")
     register_protected(price_source_blueprint, "/api/price-sources")
     register_protected(product_price_tracking_blueprint, "/api/product-price-tracking")
     register_protected(inventory_price_history_blueprint, "/api/inventory-price-history")
@@ -123,5 +126,6 @@ def create_app():
     register_protected(statistics_blueprint, "/api/statistics")
     register_protected(task_execution_blueprint, "/api/task-executions")
     register_protected(wishlist_blueprint, "/api/wishlist-items")
+    register_protected(notification_blueprint, "/api/notifications")
 
     return app

@@ -2,6 +2,7 @@ from sqlalchemy.sql import func
 
 from app.database.session import db
 from app.models.base import BaseModel
+from app.models.column_types import BitBoolean
 
 
 class FileModel(BaseModel):
@@ -32,13 +33,16 @@ class FileModel(BaseModel):
         db.ForeignKey("types.id", ondelete="RESTRICT")
     )
     file_size = db.Column(db.Integer)
+    sort_order = db.Column(db.Integer, server_default="0")
+    is_primary = db.Column(BitBoolean, server_default="0")
+    instagram_sort_order = db.Column(db.Integer, nullable=True, server_default=None)
     created_at = db.Column(
         db.TIMESTAMP,
         server_default=func.current_timestamp()
     )
 
     product = db.relationship("ProductModel", backref="files", lazy=True)
-    inventory = db.relationship("InventoryModel", backref="files", lazy=True)
+    inventory = db.relationship("InventoryModel", backref="files", lazy=True, order_by="FileModel.sort_order")
     purchase = db.relationship("PurchaseModel", backref="files", lazy=True)
     language = db.relationship("LanguageModel", backref="files", lazy=True)
     file_type = db.relationship("TypeModel", backref="files", lazy=True)

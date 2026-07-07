@@ -23,7 +23,10 @@ class FileRepository(CrudRepository):
         "stored_name",
         "file_path",
         "file_type_id",
-        "file_size"
+        "file_size",
+        "sort_order",
+        "is_primary",
+        "instagram_sort_order",
     )
     update_fields = create_fields
 

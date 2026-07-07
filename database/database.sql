@@ -672,3 +672,46 @@ ALTER TABLE purchase_items
 
 ALTER TABLE purchases CHANGE COLUMN conversion_rate conversion_rate DECIMAL(10,8) NULL DEFAULT NULL AFTER currency;
 ALTER TABLE purchase_items CHANGE COLUMN conversion_rate conversion_rate DECIMAL(10,8) NULL DEFAULT NULL AFTER split_quantity;
+
+ALTER TABLE files ADD COLUMN sort_order INT DEFAULT 0 AFTER file_size;
+ALTER TABLE files ADD COLUMN is_primary BOOLEAN DEFAULT FALSE AFTER sort_order;
+ALTER TABLE files ADD COLUMN instagram_sort_order INT DEFAULT NULL AFTER is_primary;
+
+-- publication_status type seeds
+INSERT INTO types (type, name, short_name) VALUES
+  ('publication_status', 'pending_review', 'rev'),
+  ('publication_status', 'pending_publish', 'pend'),
+  ('publication_status', 'processing', 'proc'),
+  ('publication_status', 'published', 'done'),
+  ('publication_status', 'failed', 'fail'),
+  ('publication_status', 'cancelled', 'cancel');
+
+CREATE TABLE publication_schedule (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  inventory_id INT NOT NULL,
+  scheduled_at DATETIME NULL,
+  published_at DATETIME NULL,
+  status_id INT NOT NULL,
+  caption TEXT,
+  instagram_media_id VARCHAR(100) NULL,
+  instagram_permalink VARCHAR(500) NULL,
+  error_message TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_publication_inventory
+    FOREIGN KEY (inventory_id)
+    REFERENCES inventory(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_publication_status
+    FOREIGN KEY (status_id)
+    REFERENCES types(id),
+
+  INDEX idx_publication_status (status_id),
+  INDEX idx_publication_scheduled (scheduled_at)
+);
+
+INSERT INTO scheduled_tasks (name, script_path, cron_expression, enabled)
+SELECT 'Instagram Publisher', 'instagram_publisher.py', '0 */6 * * *', b'0'
+WHERE NOT EXISTS (SELECT 1 FROM scheduled_tasks WHERE name = 'Instagram Publisher');

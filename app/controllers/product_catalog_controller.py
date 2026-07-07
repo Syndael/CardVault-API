@@ -16,7 +16,7 @@ from app.utils.pagination import get_pagination_params
 _FT_SPECIAL = re.compile(r'[+\-~*()"@><]')
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageOps
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
@@ -418,6 +418,7 @@ def get_file_content(file_id):
     if size and HAS_PIL and mime_type and mime_type.startswith("image/"):
         try:
             img = Image.open(resolved_path)
+            img = ImageOps.exif_transpose(img) or img
             width_map = {"sm": 200, "md": 400}
             target_width = width_map.get(size)
             if target_width and img.width > target_width:

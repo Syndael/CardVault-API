@@ -101,7 +101,7 @@ def _attach_image_urls(items):
                 SELECT f2.inventory_id, f2.id AS file_id
                 FROM files f2
                 WHERE f2.inventory_id IN ({ph})
-                ORDER BY f2.id
+                ORDER BY f2.is_primary DESC, f2.sort_order ASC, f2.id ASC
             """),
             params
         ).mappings().all()
