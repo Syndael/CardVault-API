@@ -34,7 +34,7 @@ def login():
     })
 
 
-@auth_blueprint.route("/user/<int:user_id>", methods=["GET"])  # /api/auth/user/<id>
+@auth_blueprint.route("/user/<int:user_id>/", methods=["GET"])  # /api/auth/user/<id>
 @auth.require_auth
 def get_user(user_id):
     user = UserService.get_by_id(user_id)
