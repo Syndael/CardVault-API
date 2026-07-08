@@ -110,6 +110,16 @@ class PublicationScheduleRepository(CrudRepository):
             )
 
         try:
+            inventory_id = request.args.get("inventory_id")
+        except RuntimeError:
+            inventory_id = None
+        if inventory_id is not None:
+            try:
+                query = query.filter(cls.model.inventory_id == int(inventory_id))
+            except ValueError:
+                pass
+
+        try:
             date_from = request.args.get("date_from", "").strip()
         except RuntimeError:
             date_from = ""
@@ -140,7 +150,7 @@ class PublicationScheduleRepository(CrudRepository):
         if raw_sort == "oldest":
             query = query.order_by(cls.model.created_at.asc())
         elif raw_sort == "scheduled":
-            query = query.order_by(cls.model.scheduled_at.desc().nullslast())
+            query = query.order_by(cls.model.scheduled_at.is_(None).asc(), cls.model.scheduled_at.desc())
         else:
             query = query.order_by(cls.model.created_at.desc())
 
