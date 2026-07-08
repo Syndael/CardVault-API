@@ -2,6 +2,7 @@ from datetime import datetime
 
 from flask import request
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from app.models.collection_model import CollectionModel
 from app.models.inventory_model import InventoryModel
@@ -142,6 +143,10 @@ class PublicationScheduleRepository(CrudRepository):
             query = query.order_by(cls.model.scheduled_at.desc().nullslast())
         else:
             query = query.order_by(cls.model.created_at.desc())
+
+        query = query.options(
+            selectinload(cls.model.inventory).selectinload(InventoryModel.files)
+        )
 
         return paginate_query(query, page, per_page)
 

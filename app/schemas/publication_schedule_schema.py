@@ -16,3 +16,18 @@ class PublicationScheduleSchema(Schema):
     inventory = fields.Nested("app.schemas.inventory_schema.InventorySchema",
                               dump_only=True, allow_none=True,
                               exclude=("tags",))
+    photo_count = fields.Method("get_photo_count", dump_only=True)
+    first_photo_id = fields.Method("get_first_photo_id", dump_only=True)
+
+    def get_photo_count(self, obj):
+        if obj.inventory and obj.inventory.files:
+            return sum(1 for f in obj.inventory.files if f.instagram_sort_order is not None)
+        return 0
+
+    def get_first_photo_id(self, obj):
+        if obj.inventory and obj.inventory.files:
+            ig_files = [f for f in obj.inventory.files if f.instagram_sort_order is not None]
+            if ig_files:
+                ig_files.sort(key=lambda f: f.instagram_sort_order or 0)
+                return ig_files[0].id
+        return None
