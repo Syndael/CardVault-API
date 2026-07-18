@@ -110,3 +110,13 @@ INSERT INTO types (type, name) VALUES
 ('w_state', 'notificado');
 
 INSERT INTO settings (setting_key, setting_value) VALUES ('bulk.import.default.tags', 'Almacén');
+
+INSERT INTO settings (setting_key, setting_value) VALUES
+('instagram.username', ''),
+('instagram.password', ''),
+('instagram.music.dir', ''),
+('instagram.gif.dir', ''),
+('instagram.enable.stories', '1'),
+('instagram.session.path', ''),
+('instagram.dev.mode', ''),
+('instagram.dev.output', '');

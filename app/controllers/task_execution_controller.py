@@ -65,3 +65,14 @@ def get_execution_log(exec_id):
     with open(log_path, "r", encoding="utf-8", errors="replace") as f:
         content = f.read()
     return jsonify({"content": content})
+
+
+@task_execution_blueprint.route("/<int:exec_id>/retry", methods=["POST"], strict_slashes=False)
+def retry_execution(exec_id):
+    if not auth.has_any_role(*WRITE_ROLES):
+        return jsonify({"message": "Forbidden"}), 403
+    entity = TaskExecutionService.retry_execution(exec_id)
+    if not entity:
+        return jsonify({"message": "Not found"}), 404
+    schema = TaskExecutionSchema()
+    return jsonify(schema.dump(entity))
