@@ -11,14 +11,7 @@ from app.database.session import db
 from app.models.user_model import UserModel
 from app.models.user_session_model import UserSessionModel
 
-try:
-    # werkzeug is available in Flask environments
-    from werkzeug.security import check_password_hash
-except Exception:  # pragma: no cover - fallback
-    def check_password_hash(stored, plain):
-        # naive fallback: compare directly (not secure). This is only
-        # a fallback to avoid hard failure if werkzeug isn't present.
-        return stored == plain
+from werkzeug.security import check_password_hash
 
 SESSION_EXPIRES_DAYS = int(os.getenv("SESSION_EXPIRES_DAYS", "7"))
 

@@ -15,16 +15,11 @@ from app.models.purchase_item_model import PurchaseItemModel
 from app.models.purchase_model import PurchaseModel
 from app.models.type_model import TypeModel
 
-
-def _is_admin():
-    user = getattr(g, "current_user", None)
-    if not user:
-        return False
-    return any(ur.role.name == "admin" for ur in getattr(user, "user_roles", []))
+import app.auth as auth
 
 
 def _user_filter(query, model, user_id_col="user_id"):
-    if _is_admin():
+    if auth.has_any_role("admin"):
         return query
     user = getattr(g, "current_user", None)
     if user:
@@ -34,7 +29,7 @@ def _user_filter(query, model, user_id_col="user_id"):
 
 def summary():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     total_inventory = _user_filter(
         db.session.query(sa_func.coalesce(sa_func.sum(InventoryModel.quantity), 0)),
@@ -116,7 +111,7 @@ def summary():
 
 def inventory_value_by_type():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     latest_price_subq = (
         db.session.query(
@@ -188,7 +183,7 @@ def inventory_value_by_type():
 
 def inventory_value_detail():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     cols = [
         InventoryModel.id.label("inv_id"),
@@ -295,7 +290,7 @@ def inventory_value_detail():
 
 def collections_top(limit=20):
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     from app.models.language_model import LanguageModel
 
@@ -386,7 +381,7 @@ def collections_top(limit=20):
 
 def purchases_by_entity():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     def _entity_query(parent_col=None):
         if parent_col:
@@ -474,7 +469,7 @@ def purchases_by_entity():
 
 def purchases_by_month():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     cols = [
         sa_func.date_format(PurchaseModel.purchase_date, "%Y-%m").label("month"),
@@ -513,7 +508,7 @@ def purchases_by_month():
 
 def language_distribution():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     from app.models.language_model import LanguageModel
 
@@ -552,7 +547,7 @@ def language_distribution():
 
 def condition_distribution():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     from app.models.product_condition_model import ProductConditionModel
 
@@ -615,7 +610,7 @@ def _best_translation_subq(model, fk_col, lang_model, order_col):
 
 def top_valuable_items(limit=10):
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
     from app.models.language_model import LanguageModel
 
     latest = _latest_price_subq()
@@ -664,7 +659,7 @@ def top_valuable_items(limit=10):
 
 def top_profit_items(limit=10):
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
     from app.models.language_model import LanguageModel
 
     latest = _latest_price_subq()
@@ -719,7 +714,7 @@ def top_profit_items(limit=10):
 
 def untracked_items():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     query = db.session.query(
         InventoryModel.id.label("inv_id"),
@@ -753,7 +748,7 @@ def untracked_items():
 
 def avg_monthly_spending():
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     cols = [
         sa_func.date_format(PurchaseModel.purchase_date, "%Y-%m").label("month"),
@@ -791,7 +786,7 @@ def avg_monthly_spending():
 
 def best_investment_entities(limit=None):
     user = getattr(g, "current_user", None)
-    is_admin = _is_admin()
+    is_admin = auth.has_any_role("admin")
 
     latest = _latest_price_subq()
 

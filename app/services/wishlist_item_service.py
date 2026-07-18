@@ -100,7 +100,13 @@ class WishlistItemService(CrudService):
         query = query.options(
             joinedload(WishlistItemModel.language),
             joinedload(WishlistItemModel.condition),
+            joinedload(WishlistItemModel.user),
+            selectinload(WishlistItemModel.product).joinedload(ProductModel.collection),
+            selectinload(WishlistItemModel.product).selectinload(ProductModel.translations),
+            selectinload(WishlistItemModel.product).selectinload(ProductModel.files),
             selectinload(WishlistItemModel.product).selectinload(ProductModel.price_tracking).joinedload(ProductPriceTrackingModel.price_source),
+            selectinload(WishlistItemModel.prices),
+            selectinload(WishlistItemModel.notifications),
         )
 
         return paginate_query(query, page, per_page)
@@ -111,7 +117,13 @@ class WishlistItemService(CrudService):
         query = query.options(
             joinedload(WishlistItemModel.language),
             joinedload(WishlistItemModel.condition),
+            joinedload(WishlistItemModel.user),
+            selectinload(WishlistItemModel.product).joinedload(ProductModel.collection),
+            selectinload(WishlistItemModel.product).selectinload(ProductModel.translations),
+            selectinload(WishlistItemModel.product).selectinload(ProductModel.files),
             selectinload(WishlistItemModel.product).selectinload(ProductModel.price_tracking).joinedload(ProductPriceTrackingModel.price_source),
+            selectinload(WishlistItemModel.prices),
+            selectinload(WishlistItemModel.notifications),
         )
         return paginate_query(query, page, per_page)
 
@@ -122,13 +134,6 @@ class WishlistItemService(CrudService):
     @classmethod
     def get_by_product(cls, product_id):
         return cls.repository.model.query.filter_by(product_id=product_id).all()
-
-    @classmethod
-    def get_all_active(cls):
-        return cls.repository.model.query.filter(
-            WishlistItemModel.target_price.isnot(None),
-            WishlistItemModel.w_state == "buscando",
-        ).all()
 
     @classmethod
     def record_price(cls, item_id, price, source=None):

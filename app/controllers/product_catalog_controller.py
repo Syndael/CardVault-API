@@ -1,4 +1,5 @@
 import mimetypes
+import logging
 import os
 import re
 from io import BytesIO
@@ -12,6 +13,8 @@ from sqlalchemy import text
 import app.auth as auth
 from app.database.session import db
 from app.utils.pagination import get_pagination_params
+
+logger = logging.getLogger(__name__)
 
 _FT_SPECIAL = re.compile(r'[+\-~*()"@><]')
 
@@ -192,8 +195,7 @@ def get_products():
 
     search_sql, has_ft = _search_clause(search_terms)
     if has_ft:
-        clean = [_FT_SPECIAL.sub(" ", t).strip() for t in search_terms]
-        clean = [t for t in clean if t]
+        clean = [cleaned for t in search_terms if (cleaned := _FT_SPECIAL.sub(" ", t).strip())]
         params["ft_q"] = " ".join(f"+{t}" for t in clean)
 
     has_text_filters = bool(search_terms) or bool(raw_prod_name)
@@ -348,18 +350,19 @@ def suggest_urls():
 
     def search_ddg(query):
         try:
-            sess = requests.Session()
-            sess.get("https://lite.duckduckgo.com/lite/", timeout=10, headers={
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
-            })
-            resp = sess.post("https://lite.duckduckgo.com/lite/", data={"q": query}, timeout=15, headers={
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
-            })
-            if not resp.ok:
-                return []
-            link_re = re.compile(r'<a[^>]+href="(https?://[^"]+)"')
-            return link_re.findall(resp.text)
-        except Exception:
+            with requests.Session() as sess:
+                sess.get("https://lite.duckduckgo.com/lite/", timeout=10, headers={
+                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+                })
+                resp = sess.post("https://lite.duckduckgo.com/lite/", data={"q": query}, timeout=15, headers={
+                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+                })
+                if not resp.ok:
+                    return []
+                link_re = re.compile(r'<a[^>]+href="(https?://[^"]+)"')
+                return link_re.findall(resp.text)
+        except Exception as e:
+            logger.warning("DDG search failed for '%s': %s", query, e)
             return []
 
     cm_links = search_ddg(base_query + " cardmarket")
@@ -415,30 +418,51 @@ def get_file_content(file_id):
 
     # Check if a specific size is requested (responsive images)
     size = request.args.get("size")
-    if size and HAS_PIL and mime_type and mime_type.startswith("image/"):
+    width_str = request.args.get("w")
+    fmt_param = request.args.get("format", "").lower()
+    if (size or width_str) and HAS_PIL and mime_type and mime_type.startswith("image/"):
+        img = None
         try:
             img = Image.open(resolved_path)
             img = ImageOps.exif_transpose(img) or img
-            width_map = {"sm": 200, "md": 400}
-            target_width = width_map.get(size)
+            width_map = {"xs": 100, "sm": 200, "md": 400, "lg": 800}
+            target_width = width_map.get(size) if size else None
+            if not target_width and width_str:
+                try:
+                    target_width = int(width_str)
+                except ValueError:
+                    target_width = None
             if target_width and img.width > target_width:
                 ratio = target_width / img.width
-                target_height = int(img.height * ratio)
+                target_height = max(1, int(img.height * ratio))
                 img = img.resize((target_width, target_height), Image.LANCZOS)
-                buf = BytesIO()
-                fmt = img.format or "JPEG"
-                img.save(buf, fmt, quality=85)
-                buf.seek(0)
-                resp = send_file(
-                    buf,
-                    download_name=row["original_name"],
-                    as_attachment=False,
-                    mimetype=mime_type,
-                )
-                resp.headers['Cache-Control'] = 'public, max-age=86400'
-                return resp
-        except Exception:
-            pass
+            save_fmt = "JPEG"
+            save_mime = mime_type
+            if fmt_param == "webp":
+                save_fmt = "WEBP"
+                save_mime = "image/webp"
+            elif fmt_param == "png":
+                save_fmt = "PNG"
+                save_mime = "image/png"
+            else:
+                save_fmt = img.format or "JPEG"
+            img = img.convert("RGB") if save_fmt in ("JPEG", "WEBP") and img.mode in ("RGBA", "P", "LA") else img
+            buf = BytesIO()
+            img.save(buf, save_fmt, quality=82, optimize=True)
+            buf.seek(0)
+            resp = send_file(
+                buf,
+                download_name=row["original_name"],
+                as_attachment=False,
+                mimetype=save_mime,
+            )
+            resp.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+            return resp
+        except Exception as e:
+            logger.warning("Image resize failed for %s: %s", resolved_path, e)
+        finally:
+            if img is not None:
+                img.close()
 
     resp = send_file(
         resolved_path,
@@ -446,7 +470,7 @@ def get_file_content(file_id):
         as_attachment=False,
         mimetype=mime_type,
     )
-    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    resp.headers['Cache-Control'] = 'public, max-age=604800'
     return resp
 
 

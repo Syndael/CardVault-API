@@ -2,6 +2,7 @@ from flask import request, g
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import joinedload, selectinload
 
+import app.auth as auth
 from app.models.collection_model import CollectionModel
 from app.models.inventory_model import InventoryModel
 from app.models.inventory_price_history_model import InventoryPriceHistoryModel
@@ -14,13 +15,6 @@ from app.models.purchase_item_model import PurchaseItemModel
 from app.models.tag_model import TagModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
-
-
-def _is_admin():
-    user = getattr(g, "current_user", None)
-    if not user:
-        return False
-    return any(ur.role.name == "admin" for ur in getattr(user, "user_roles", []))
 
 
 def _can_see_all_inventory():
@@ -59,7 +53,7 @@ class InventoryRepository(CrudRepository):
             pass
         if _can_see_all_inventory() and show_all:
             pass
-        elif not _is_admin():
+        elif not auth.has_any_role("admin"):
             user = getattr(g, "current_user", None)
             if user:
                 query = query.filter(cls.model.user_id == user.id)

@@ -1,9 +1,12 @@
+import logging
 import smtplib
 import urllib.parse
 import urllib.request
 from email.mime.text import MIMEText
 
 from app.models.setting_model import SettingModel
+
+logger = logging.getLogger(__name__)
 
 
 def _get_setting(key):
@@ -34,7 +37,8 @@ def send_email(to_addr, subject, message):
                 server.login(smtp_user, smtp_pass)
             server.sendmail(from_addr, [to_addr], msg.as_string())
         return True
-    except Exception:
+    except Exception as e:
+        logger.error("send_email failed: %s", e)
         return False
 
 
@@ -50,7 +54,9 @@ def send_telegram(message):
         }).encode("utf-8")
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
-        urllib.request.urlopen(req, timeout=10)
+        with urllib.request.urlopen(req, timeout=10):
+            pass
         return True
-    except Exception:
+    except Exception as e:
+        logger.error("send_telegram failed: %s", e)
         return False

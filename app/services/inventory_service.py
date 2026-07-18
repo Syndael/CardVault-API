@@ -1,6 +1,7 @@
 from flask import g
 from sqlalchemy import and_, text
 
+import app.auth as auth
 from app.database.session import db
 from app.models.inventory_model import InventoryModel
 from app.models.inventory_tag_model import InventoryTagModel
@@ -10,17 +11,10 @@ from app.repositories.inventory_repository import InventoryRepository
 from app.services.crud_service import CrudService
 
 
-def _is_admin():
-    user = getattr(g, "current_user", None)
-    if not user:
-        return False
-    return any(ur.role.name == "admin" for ur in getattr(user, "user_roles", []))
-
-
 def _can_access(entity):
     if not entity:
         return False
-    if _is_admin():
+    if auth.has_any_role("admin"):
         return True
     user = getattr(g, "current_user", None)
     if not user:
@@ -180,16 +174,20 @@ class InventoryService(CrudService):
         tag_names = data.get("tag_names") or []
         if not tag_names and data.get("tag_name"):
             tag_names = [data.get("tag_name")]
-        tag_names = [t.strip() for t in tag_names if t and t.strip()]
+        tag_names = [tn for t in tag_names if t and (tn := t.strip())]
 
         tags = []
-        for name in tag_names:
-            tag = TagModel.query.filter(TagModel.name == name).first()
-            if not tag:
-                tag = TagModel(name=name)
-                db.session.add(tag)
-                db.session.flush()
-            tags.append(tag)
+        if tag_names:
+            existing = TagModel.query.filter(TagModel.name.in_(tag_names)).all()
+            existing_map = {t.name: t for t in existing}
+            for name in tag_names:
+                if name in existing_map:
+                    tags.append(existing_map[name])
+                else:
+                    tag = TagModel(name=name)
+                    db.session.add(tag)
+                    db.session.flush()
+                    tags.append(tag)
 
         results = []
         for item in items:

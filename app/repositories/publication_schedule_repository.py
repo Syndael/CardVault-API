@@ -32,6 +32,7 @@ class PublicationScheduleRepository(CrudRepository):
         "instagram_permalink",
         "error_message",
     )
+    _status_cache: dict = {} 
 
     @classmethod
     def create(cls, data):
@@ -41,8 +42,10 @@ class PublicationScheduleRepository(CrudRepository):
 
     @classmethod
     def _get_status_id(cls, name):
-        t = TypeModel.query.filter_by(type="publication_status", name=name).first()
-        return t.id if t else None
+        if name not in cls._status_cache:
+            t = TypeModel.query.filter_by(type="publication_status", name=name).first()
+            cls._status_cache[name] = t.id if t else None
+        return cls._status_cache[name]
 
     @classmethod
     def get_paginated(cls, page, per_page):
@@ -164,10 +167,12 @@ class PublicationScheduleRepository(CrudRepository):
     def get_pending_publish(cls):
         now = datetime.now()
         pending_id = cls._get_status_id("pending_publish")
-        if not pending_id:
+        failed_id = cls._get_status_id("failed")
+        status_ids = [sid for sid in [pending_id, failed_id] if sid]
+        if not status_ids:
             return []
         return cls.model.query.filter(
-            cls.model.status_id == pending_id,
+            cls.model.status_id.in_(status_ids),
             cls.model.scheduled_at <= now
         ).order_by(cls.model.scheduled_at).all()
 

@@ -108,7 +108,7 @@ def generate_caption(inventory_id: int) -> str:
         }
         print(f"[AI] PROMPT:\n{prompt}\n")
         resp = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={api_key}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={api_key}",
             headers={"Content-Type": "application/json"},
             json=body,
             timeout=30,

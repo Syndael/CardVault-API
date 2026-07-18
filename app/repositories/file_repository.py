@@ -1,3 +1,4 @@
+import logging
 import os
 import urllib.request
 from urllib.parse import urlsplit
@@ -5,6 +6,8 @@ from urllib.parse import urlsplit
 from app.models.file_model import FileModel
 from app.models.setting_model import SettingModel
 from app.repositories.crud_repository import CrudRepository
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 DEFAULT_IMG_DIR = "products_images"
@@ -87,7 +90,8 @@ class FileRepository(CrudRepository):
             with open(target_path, "wb") as f:
                 f.write(data)
             return os.path.relpath(target_path, REPO_ROOT), len(data), fname
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to download remote file %s: %s", url, e)
             return None, None, None
 
     @classmethod

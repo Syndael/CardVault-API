@@ -1,7 +1,11 @@
+import logging
+
 from flask import Blueprint, jsonify, request
 
 import app.auth as auth
 from app.utils.pagination import get_pagination_params, paginated_response
+
+logger = logging.getLogger(__name__)
 
 
 def _roles_guard(read_roles, write_roles, method):
@@ -58,7 +62,11 @@ def create_crud_blueprint(name, service, schema_class, id_name,
         if _check_role("PATCH"):
             return jsonify({"message": "Forbidden"}), 403
         body = request.get_json()
-        entity = service.update(kwargs[id_name], body)
+        try:
+            entity = service.update(kwargs[id_name], body)
+        except Exception as e:
+            logger.exception("PATCH %s failed", name)
+            return jsonify({"message": "Internal error", "error": str(e)}), 500
         if not entity:
             return jsonify({"message": "Not found"}), 404
 

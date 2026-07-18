@@ -52,7 +52,8 @@ def download_manual_file():
     # debug: log request body and headers to help diagnose 400 issues
     try:
         raw = request.get_data(as_text=True)
-    except Exception:
+    except Exception as e:
+        print("download_manual_get_data_error:", e)
         raw = None
     print("download_manual_request_headers:", dict(request.headers))
     print("download_manual_raw_body:", raw)
@@ -68,7 +69,8 @@ def download_manual_file():
     try:
         if language_id is not None and language_id != "":
             language_id = int(language_id)
-    except Exception:
+    except (ValueError, TypeError) as e:
+        print("download_manual_language_id_parse_error:", e)
         language_id = None
 
     if not product_id or not file_url:

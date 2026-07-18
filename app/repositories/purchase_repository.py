@@ -1,5 +1,5 @@
 from sqlalchemy import or_, cast, String
-from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import subqueryload, joinedload
 
 from flask import request, g
 
@@ -12,12 +12,7 @@ from app.models.purchase_model import PurchaseModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
 
-
-def _is_admin():
-    user = getattr(g, "current_user", None)
-    if not user:
-        return False
-    return any(ur.role.name == "admin" for ur in getattr(user, "user_roles", []))
+import app.auth as auth
 
 
 class PurchaseRepository(CrudRepository):
@@ -50,9 +45,13 @@ class PurchaseRepository(CrudRepository):
     @classmethod
     def get_paginated(cls, page, per_page):
         query = cls.model.query.options(
-            subqueryload(cls.model.files).subqueryload(FileModel.file_type)
+            subqueryload(cls.model.files).subqueryload(FileModel.file_type),
+            joinedload(cls.model.entity),
+            joinedload(cls.model.shipping_status),
+            joinedload(cls.model.shipping_company),
+            subqueryload(cls.model.items).joinedload(PurchaseItemModel.product).joinedload(ProductModel.collection),
         ).order_by(*cls.order_by)
-        if not _is_admin():
+        if not auth.has_any_role("admin"):
             user = getattr(g, "current_user", None)
             if user:
                 query = query.filter(cls.model.user_id == user.id)

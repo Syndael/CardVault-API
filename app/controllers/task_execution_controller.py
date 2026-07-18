@@ -29,6 +29,15 @@ def get_pending():
     return jsonify(schema.dump(data))
 
 
+@task_execution_blueprint.route("/running", methods=["GET"], strict_slashes=False)
+def get_running():
+    if not auth.has_any_role(*READ_ROLES):
+        return jsonify({"message": "Forbidden"}), 403
+    schema = TaskExecutionSchema(many=True)
+    data = TaskExecutionService.get_running()
+    return jsonify(schema.dump(data))
+
+
 @task_execution_blueprint.route("/last/<int:task_id>", methods=["GET"], strict_slashes=False)
 def get_last(task_id):
     if not auth.has_any_role(*READ_ROLES):

@@ -18,6 +18,10 @@ class TaskExecutionRepository(CrudRepository):
         ).order_by(cls.model.scheduled_date).all()
 
     @classmethod
+    def get_running(cls):
+        return cls.model.query.filter(cls.model.status == "running").all()
+
+    @classmethod
     def get_last_for_task(cls, task_id):
         return cls.model.query.filter_by(
             scheduled_task_id=task_id,
