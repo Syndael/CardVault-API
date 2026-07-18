@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from app.controllers.crud_controller import _roles_guard
 from app.services import ai_service
@@ -16,5 +16,8 @@ def generate_text(publication_id):
     if not pub:
         return jsonify({"message": "Publication not found"}), 404
 
-    text = ai_service.generate_caption(pub.inventory_id)
+    body = request.get_json(silent=True) or {}
+    user_text = (body.get("user_text") or "").strip()
+
+    text = ai_service.generate_caption(pub.inventory_id, user_text)
     return jsonify({"text": text})

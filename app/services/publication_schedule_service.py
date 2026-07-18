@@ -51,7 +51,7 @@ class PublicationScheduleService(CrudService):
         if product_name and product_name != product_number:
             lines.append("")
 
-        tags = ["#CardVault", "#TCG", "#Coleccionismo"]
+        tags = ["#CardVault", "#TCG", "#Coleccionismo", "#Syndael_"]
 
         if card_type and card_type.get("name"):
             type_tag = card_type["name"].replace(" ", "")
