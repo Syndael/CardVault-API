@@ -5,5 +5,5 @@ from app.repositories.crud_repository import CrudRepository
 class TagRepository(CrudRepository):
     model = TagModel
     order_by = (TagModel.name,)
-    create_fields = ("name", "color")
+    create_fields = ("name", "color", "text_color")
     update_fields = create_fields

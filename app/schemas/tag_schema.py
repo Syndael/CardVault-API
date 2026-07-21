@@ -5,4 +5,5 @@ class TagSchema(Schema):
     id         = fields.Int(dump_only=True)
     name       = fields.Str(required=True)
     color      = fields.Str(allow_none=True)
+    text_color = fields.Str(allow_none=True)
     created_at = fields.DateTime(dump_only=True)
