@@ -9,6 +9,7 @@ from app.models.product_model import ProductModel
 from app.models.tag_model import TagModel
 from app.repositories.inventory_repository import InventoryRepository
 from app.services.crud_service import CrudService
+from app.services.inventory_tag_service import InventoryTagService
 
 
 def _can_access(entity):
@@ -153,6 +154,20 @@ class InventoryService(CrudService):
             return None
         cls.repository.delete(entity)
         return True
+
+    @classmethod
+    def batch_tags(cls, inventory_ids, tag_ids, action):
+        user = getattr(g, "current_user", None)
+        if not user:
+            return {"success": False, "error": "No authenticated user"}
+        managed = set()
+        for inv_id in inventory_ids:
+            entity = cls.repository.get_by_id(inv_id)
+            if entity and _can_access(entity):
+                managed.add(inv_id)
+        if not managed:
+            return {"success": False, "error": "No accessible inventory items"}
+        return InventoryTagService.batch_tags(list(managed), tag_ids, action)
 
     @classmethod
     def bulk_create(cls, data):
