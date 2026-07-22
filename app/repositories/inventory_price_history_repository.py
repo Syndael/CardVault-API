@@ -16,4 +16,4 @@ class InventoryPriceHistoryRepository(CrudRepository):
         "min_price_recorded_at",
         "max_price_recorded_at"
     )
-    update_fields = create_fields
+    update_fields = create_fields + ("recorded_at",)
