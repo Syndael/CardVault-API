@@ -21,6 +21,7 @@ class UserCollectionTrackingModel(BaseModel):
         db.String(20),
         nullable=False,
         server_default="standard",
+        primary_key=True,
     )
     created_at = db.Column(
         db.TIMESTAMP,

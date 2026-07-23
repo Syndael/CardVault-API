@@ -649,7 +649,7 @@ CREATE TABLE user_collection_tracking (
   tracking_mode VARCHAR(20) NOT NULL DEFAULT 'standard',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  PRIMARY KEY (user_id, collection_id),
+  PRIMARY KEY (user_id, collection_id, tracking_mode),
 
   CONSTRAINT fk_uct_user
     FOREIGN KEY (user_id)

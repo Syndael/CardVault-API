@@ -85,10 +85,15 @@ def _progress_payload(row, group_types):
             "owned": int(row.get(f"{col}_owned") or 0),
         }
 
+    is_manual_raw = row.get("is_manual", 0)
+    if isinstance(is_manual_raw, bytes):
+        is_manual_raw = is_manual_raw[0] if is_manual_raw else 0
+
     return {
         "collection_id": row["collection_id"],
         "collection_code": row["collection_code"],
         "collection_name": row["collection_name"],
+        "is_manual": bool(is_manual_raw),
         "tracking_mode": mode,
         "target_total": target_total,
         "owned": owned,
@@ -130,13 +135,14 @@ def list_progress():
         all_cols = ",\n                ".join(per_group_cols)
         sql = f"""
             SELECT
-                uct.collection_id,
-                c.code AS collection_code,
-                ct.name AS collection_name,
-                uct.tracking_mode,
-                {all_cols},
-                {extra_cols}
-            FROM user_collection_tracking uct
+            uct.collection_id,
+            c.code AS collection_code,
+            c.is_manual AS is_manual,
+            ct.name AS collection_name,
+            uct.tracking_mode,
+            {all_cols},
+            {extra_cols}
+        FROM user_collection_tracking uct
             INNER JOIN collections c ON c.id = uct.collection_id
             LEFT JOIN products p ON p.collection_id = c.id
             LEFT JOIN inventory i
@@ -151,8 +157,8 @@ def list_progress():
                     GROUP BY collection_id
                 )
             ) ct ON ct.collection_id = c.id
-            WHERE uct.user_id = :user_id
-            GROUP BY uct.collection_id, c.code, ct.name, uct.tracking_mode
+        WHERE uct.user_id = :user_id
+        GROUP BY uct.collection_id, c.code, c.is_manual, ct.name, uct.tracking_mode
         """
 
         params = {"user_id": user_id}
@@ -174,31 +180,32 @@ def _list_progress_fallback(user_id):
         rows = db.session.execute(
             text("""
                 SELECT
-                    uct.collection_id,
-                    c.code AS collection_code,
-                    ct.name AS collection_name,
-                    uct.tracking_mode,
-                    COUNT(DISTINCT p.id) AS standard_total,
-                    COUNT(DISTINCT CASE WHEN i.id IS NOT NULL THEN p.id END) AS standard_owned,
-                    COUNT(DISTINCT p.id) AS master_total,
-                    COUNT(DISTINCT CASE WHEN i.id IS NOT NULL THEN p.id END) AS master_owned
-                FROM user_collection_tracking uct
-                INNER JOIN collections c ON c.id = uct.collection_id
-                LEFT JOIN products p ON p.collection_id = c.id
-                LEFT JOIN inventory i
-                    ON i.product_id = p.id
-                   AND i.user_id = uct.user_id
-                LEFT JOIN (
-                    SELECT collection_id, name
+                uct.collection_id,
+                c.code AS collection_code,
+                c.is_manual AS is_manual,
+                ct.name AS collection_name,
+                uct.tracking_mode,
+                COUNT(DISTINCT p.id) AS standard_total,
+                COUNT(DISTINCT CASE WHEN i.id IS NOT NULL THEN p.id END) AS standard_owned,
+                COUNT(DISTINCT p.id) AS master_total,
+                COUNT(DISTINCT CASE WHEN i.id IS NOT NULL THEN p.id END) AS master_owned
+            FROM user_collection_tracking uct
+            INNER JOIN collections c ON c.id = uct.collection_id
+            LEFT JOIN products p ON p.collection_id = c.id
+            LEFT JOIN inventory i
+                ON i.product_id = p.id
+               AND i.user_id = uct.user_id
+            LEFT JOIN (
+                SELECT collection_id, name
+                FROM collection_translations
+                WHERE id IN (
+                    SELECT MIN(id)
                     FROM collection_translations
-                    WHERE id IN (
-                        SELECT MIN(id)
-                        FROM collection_translations
-                        GROUP BY collection_id
-                    )
-                ) ct ON ct.collection_id = c.id
-                WHERE uct.user_id = :user_id
-                GROUP BY uct.collection_id, c.code, ct.name, uct.tracking_mode
+                    GROUP BY collection_id
+                )
+            ) ct ON ct.collection_id = c.id
+            WHERE uct.user_id = :user_id
+            GROUP BY uct.collection_id, c.code, c.is_manual, ct.name, uct.tracking_mode
                 ORDER BY uct.tracking_mode, c.code
             """),
             {"user_id": user_id},
@@ -214,10 +221,14 @@ def _list_progress_fallback(user_id):
         owned = int(row["master_owned"] or 0)
         missing = max(total - owned, 0)
         percent = round((owned / total) * 100, 2) if total else 0
+        is_manual_raw = row.get("is_manual", 0)
+        if isinstance(is_manual_raw, bytes):
+            is_manual_raw = is_manual_raw[0] if is_manual_raw else 0
         items.append({
             "collection_id": row["collection_id"],
             "collection_code": row["collection_code"],
             "collection_name": row["collection_name"],
+            "is_manual": bool(is_manual_raw),
             "tracking_mode": mode,
             "target_total": total,
             "owned": owned,
@@ -249,17 +260,21 @@ def track_collection():
         return jsonify({"message": "Collection not found"}), 404
 
     tracking_mode = _normalize_tracking_mode(data.get("tracking_mode"))
-    entity = UserCollectionTrackingModel.query.get((user_id, collection.id))
+    entity = UserCollectionTrackingModel.query.get((user_id, collection.id, tracking_mode))
     if entity:
-        entity.tracking_mode = tracking_mode
-    else:
-        entity = UserCollectionTrackingModel(
-            user_id=user_id,
-            collection_id=collection.id,
-            tracking_mode=tracking_mode,
-        )
-        db.session.add(entity)
+        return jsonify({
+            "user_id": user_id,
+            "collection_id": collection.id,
+            "tracking_mode": tracking_mode,
+            "message": "Already tracked in this mode",
+        }), 200
 
+    entity = UserCollectionTrackingModel(
+        user_id=user_id,
+        collection_id=collection.id,
+        tracking_mode=tracking_mode,
+    )
+    db.session.add(entity)
     db.session.commit()
     return jsonify({
         "user_id": user_id,
@@ -274,12 +289,20 @@ def update_tracking(collection_id):
     if not user_id:
         return jsonify({"message": "Unauthorized"}), 401
 
-    entity = UserCollectionTrackingModel.query.get((user_id, collection_id))
+    data = request.get_json(silent=True) or {}
+    current_mode = _normalize_tracking_mode(data.get("tracking_mode"))
+
+    entity = UserCollectionTrackingModel.query.get((user_id, collection_id, current_mode))
     if not entity:
         return jsonify({"message": "Not found"}), 404
 
-    data = request.get_json(silent=True) or {}
-    entity.tracking_mode = _normalize_tracking_mode(data.get("tracking_mode"))
+    new_mode = _normalize_tracking_mode(data.get("new_tracking_mode", current_mode))
+    if new_mode != current_mode:
+        conflict = UserCollectionTrackingModel.query.get((user_id, collection_id, new_mode))
+        if conflict:
+            return jsonify({"message": f"Already tracking in {new_mode} mode"}), 409
+        entity.tracking_mode = new_mode
+
     db.session.commit()
     return jsonify({
         "user_id": user_id,
@@ -294,7 +317,8 @@ def untrack_collection(collection_id):
     if not user_id:
         return jsonify({"message": "Unauthorized"}), 401
 
-    entity = UserCollectionTrackingModel.query.get((user_id, collection_id))
+    tracking_mode = _normalize_tracking_mode(request.args.get("tracking_mode"))
+    entity = UserCollectionTrackingModel.query.get((user_id, collection_id, tracking_mode))
     if not entity:
         return jsonify({"message": "Not found"}), 404
 

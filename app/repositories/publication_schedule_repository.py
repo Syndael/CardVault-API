@@ -158,7 +158,28 @@ class PublicationScheduleRepository(CrudRepository):
             query = query.order_by(cls.model.created_at.desc())
 
         query = query.options(
-            selectinload(cls.model.inventory).selectinload(InventoryModel.files)
+            selectinload(cls.model.inventory).options(
+                selectinload(InventoryModel.product).options(
+                    selectinload(ProductModel.translations),
+                    selectinload(ProductModel.collection).options(
+                        selectinload(CollectionModel.translations),
+                        selectinload(CollectionModel.card_type),
+                    ),
+                    selectinload(ProductModel.product_type),
+                    selectinload(ProductModel.product_format),
+                    selectinload(ProductModel.completion_group),
+                ),
+                selectinload(InventoryModel.collection).options(
+                    selectinload(CollectionModel.translations),
+                    selectinload(CollectionModel.card_type),
+                ),
+                selectinload(InventoryModel.language),
+                selectinload(InventoryModel.purchase),
+                selectinload(InventoryModel.purchase_item),
+                selectinload(InventoryModel.extra_type),
+                selectinload(InventoryModel.condition),
+                selectinload(InventoryModel.files),
+            )
         )
 
         return paginate_query(query, page, per_page)
