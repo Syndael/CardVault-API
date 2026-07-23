@@ -14,8 +14,8 @@ class PublicationScheduleSchema(Schema):
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
     inventory = fields.Nested("app.schemas.inventory_schema.InventorySchema",
-                              dump_only=True, allow_none=True,
-                              exclude=("tags",))
+                               dump_only=True, allow_none=True,
+                               exclude=("tags", "purchase", "purchase_item"))
     photo_count = fields.Method("get_photo_count", dump_only=True)
     first_photo_id = fields.Method("get_first_photo_id", dump_only=True)
 

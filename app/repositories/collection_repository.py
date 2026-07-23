@@ -17,7 +17,8 @@ class CollectionRepository:
     @staticmethod
     def _base_query():
         return CollectionModel.query.options(
-            joinedload(CollectionModel.translations).joinedload(CollectionTranslationModel.language)
+            joinedload(CollectionModel.translations).joinedload(CollectionTranslationModel.language),
+            joinedload(CollectionModel.card_type),
         )
 
     @staticmethod

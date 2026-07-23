@@ -169,13 +169,7 @@ class PublicationScheduleRepository(CrudRepository):
                     selectinload(ProductModel.product_format),
                     selectinload(ProductModel.completion_group),
                 ),
-                selectinload(InventoryModel.collection).options(
-                    selectinload(CollectionModel.translations),
-                    selectinload(CollectionModel.card_type),
-                ),
                 selectinload(InventoryModel.language),
-                selectinload(InventoryModel.purchase),
-                selectinload(InventoryModel.purchase_item),
                 selectinload(InventoryModel.extra_type),
                 selectinload(InventoryModel.condition),
                 selectinload(InventoryModel.files),

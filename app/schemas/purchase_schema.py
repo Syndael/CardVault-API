@@ -58,3 +58,11 @@ class PurchaseSchema(Schema):
         dump_only=True,
         exclude=("purchase",)
     )
+
+
+class PurchaseListSchema(PurchaseSchema):
+    item_count = fields.Function(lambda obj: len(obj.items) if obj.items else 0)
+
+    class Meta:
+        exclude = ("items", "conversion_rate", "original_amount", "original_currency",
+                    "has_photos", "has_docs", "notes")

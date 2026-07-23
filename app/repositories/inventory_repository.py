@@ -365,9 +365,11 @@ class InventoryRepository(CrudRepository):
             joinedload(InventoryModel.extra_type),
             joinedload(InventoryModel.product).selectinload(ProductModel.translations),
             joinedload(InventoryModel.product).joinedload(ProductModel.product_type),
+            joinedload(InventoryModel.product).joinedload(ProductModel.completion_group),
             joinedload(InventoryModel.product).selectinload(ProductModel.price_tracking).joinedload(ProductPriceTrackingModel.price_source),
             joinedload(InventoryModel.purchase),
             joinedload(InventoryModel.purchase_item),
+            selectinload(InventoryModel.tags),
         )
 
         return paginate_query(query, page, per_page)
