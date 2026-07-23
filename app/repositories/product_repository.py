@@ -13,6 +13,6 @@ class ProductRepository(CrudRepository):
         "force_download",
         "is_verified",
         "is_manual",
-        "completion_group",
+        "completion_group_id",
     )
     update_fields = create_fields

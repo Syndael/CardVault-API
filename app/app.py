@@ -55,6 +55,16 @@ def create_app():
     def bad_request_generic(e):
         return jsonify({"error": str(e.description or "Bad request")}), 400
 
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            resp = app.make_default_options_response()
+            resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PATCH,DELETE,OPTIONS"
+            resp.headers["X-Content-Type-Options"] = "nosniff"
+            return resp
+
     @app.after_request
     def add_cors_headers(response):
         allowed_origins = app.config["CORS_ALLOWED_ORIGINS"]

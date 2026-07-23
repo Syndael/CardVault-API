@@ -42,6 +42,7 @@ CREATE TABLE products (
   is_manual BIT(1) NOT NULL DEFAULT b'0',
   is_verified BIT NOT NULL DEFAULT b'0',
   force_download BIT NULL DEFAULT NULL,
+  completion_group_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_products_collection
@@ -56,6 +57,11 @@ CREATE TABLE products (
 
   CONSTRAINT fk_products_format
     FOREIGN KEY (product_format_id)
+    REFERENCES types(id)
+    ON DELETE RESTRICT,
+
+  CONSTRAINT fk_product_completion_group
+    FOREIGN KEY (completion_group_id)
     REFERENCES types(id)
     ON DELETE RESTRICT,
 
@@ -634,12 +640,8 @@ ON inventory_price_history(inventory_id, recorded_at DESC);
 CREATE INDEX idx_history_inventory_tracking_recorded
 ON inventory_price_history(inventory_id, product_price_tracking_id, recorded_at DESC);
 
-ALTER TABLE products
-  ADD COLUMN completion_group VARCHAR(20) NOT NULL DEFAULT 'standard'
-  AFTER force_download;
-
 CREATE INDEX idx_products_completion_group
-ON products(collection_id, completion_group);
+ON products(collection_id, completion_group_id);
 
 CREATE TABLE user_collection_tracking (
   user_id INT NOT NULL,

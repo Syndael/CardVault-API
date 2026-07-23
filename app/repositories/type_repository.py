@@ -9,12 +9,11 @@ class TypeRepository:
         return TypeModel.query.order_by(TypeModel.id).all()
 
     @staticmethod
-    def get_paginated(page, per_page):
-        return paginate_query(
-            TypeModel.query.order_by(TypeModel.id),
-            page,
-            per_page
-        )
+    def get_paginated(page, per_page, type_filter=""):
+        query = TypeModel.query.order_by(TypeModel.id)
+        if type_filter:
+            query = query.filter(TypeModel.type == type_filter)
+        return paginate_query(query, page, per_page)
 
     @staticmethod
     def get_by_id(type_id):

@@ -60,6 +60,7 @@ def _search_clause(search_terms):
 CATALOG_BASE_FROM = """
 FROM products p
 INNER JOIN collections c ON c.id = p.collection_id
+INNER JOIN types cg ON cg.id = p.completion_group_id
 """
 
 CATALOG_TEXT_JOINS = """
@@ -125,6 +126,7 @@ AND (:is_verified = -1 OR p.is_verified = :is_verified)
 AND (:is_manual = -1 OR c.is_manual = :is_manual)
 AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
 AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
+AND (:collection_id = -1 OR c.id = :collection_id)
 AND (:collection_code = '' OR c.code = :collection_code)
 AND (:product_number = '' OR p.product_number LIKE :product_number_like)
 AND (:product_name = '' OR pt.name LIKE :product_name_like OR pt.name_alter LIKE :product_name_like)
@@ -172,6 +174,7 @@ def get_products():
     raw_format_id = request.args.get("product_format_id")
     raw_pending = request.args.get("pending_sync")
     raw_col_code = (request.args.get("collection_code") or "").strip()
+    raw_col_id = request.args.get("collection_id")
     raw_prod_number = (request.args.get("product_number") or "").strip()
     raw_prod_name = (request.args.get("product_name") or "").strip()
     raw_has_image = request.args.get("has_image")
@@ -183,6 +186,7 @@ def get_products():
         "pending_sync": 1 if raw_pending == "1" else 0,
         "has_image": int(raw_has_image) if raw_has_image in ("0", "1") else -1,
         "collection_code": raw_col_code,
+        "collection_id": int(raw_col_id) if raw_col_id else -1,
         "product_number": raw_prod_number,
         "product_number_like": f"%{raw_prod_number}%",
         "product_name": raw_prod_name,
@@ -217,7 +221,8 @@ def get_products():
                 AND (:is_manual = -1 OR c.is_manual = :is_manual)
 AND (:product_type_id = -1 OR p.product_type_id = :product_type_id)
 AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
-                AND (:collection_code = '' OR c.code = :collection_code)
+AND (:collection_id = -1 OR c.id = :collection_id)
+AND (:collection_code = '' OR c.code = :collection_code)
                 AND (:product_number = '' OR p.product_number LIKE :product_number_like)
                 AND (
                     :pending_sync = 0
@@ -252,7 +257,8 @@ AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
                 pt.name AS product_name,
                 pt.name_alter AS product_name_alter,
                 CAST(p.is_verified AS UNSIGNED) AS is_verified,
-                p.completion_group AS completion_group,
+                cg.name AS completion_group,
+                p.completion_group_id AS completion_group_id,
                 f.id AS file_id,
                 tracker.url AS tracker_url
             {CATALOG_SELECT_FROM} {CATALOG_WHERE} {search_sql}
@@ -284,6 +290,7 @@ AND (:product_format_id = -1 OR p.product_format_id = :product_format_id)
                 "force_download": row["force_download"] == 1,
                 "is_verified": row["is_verified"] == 1,
                 "completion_group": row["completion_group"],
+                "completion_group_id": row["completion_group_id"],
                 "collection_name": row["collection_name"],
                 "product_number": row["product_number"],
                 "product_name": format_name(

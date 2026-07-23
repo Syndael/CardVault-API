@@ -28,12 +28,17 @@ class ProductModel(BaseModel):
     force_download  = db.Column(BitBoolean)
     is_verified     = db.Column(BitBoolean, server_default="0")
     is_manual       = db.Column(BitBoolean, server_default="0")
-    completion_group = db.Column(db.String(20), nullable=False, server_default="standard")
+    completion_group_id = db.Column(
+        db.Integer,
+        db.ForeignKey("types.id", ondelete="RESTRICT"),
+        nullable=False
+    )
     created_at      = db.Column(db.TIMESTAMP, server_default=func.current_timestamp())
 
     collection      = db.relationship("CollectionModel", backref="products", lazy=True)
     product_type    = db.relationship("TypeModel",       foreign_keys=[product_type_id], backref="products", lazy=True)
     product_format  = db.relationship("TypeModel",       foreign_keys=[product_format_id])
+    completion_group = db.relationship("TypeModel",       foreign_keys=[completion_group_id], lazy=True)
 
     __table_args__ = (
         db.UniqueConstraint(

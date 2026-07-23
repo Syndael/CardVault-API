@@ -48,7 +48,7 @@ class InventorySchema(Schema):
 class ProductLiteSchema(Schema):
     id = fields.Int()
     product_number = fields.Str()
-    completion_group = fields.Str()
+    completion_group = fields.Nested(TypeSchema, dump_only=True)
     product_type = fields.Nested(TypeSchema)
     translations = fields.Nested("ProductTranslationLiteSchema", many=True)
 

@@ -1,4 +1,7 @@
+from flask import request
+
 from app.repositories.type_repository import TypeRepository
+
 
 class TypeService:
     @staticmethod
@@ -7,10 +10,8 @@ class TypeService:
 
     @staticmethod
     def get_paginated(page, per_page):
-        return TypeRepository.get_paginated(
-            page,
-            per_page
-        )
+        type_filter = (request.args.get("type") or "").strip() if request else ""
+        return TypeRepository.get_paginated(page, per_page, type_filter=type_filter)
 
     @staticmethod
     def get_by_id(type_id):
