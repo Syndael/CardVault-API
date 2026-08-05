@@ -162,6 +162,37 @@ def get_purchase_files(purchase_id):
     return jsonify(schema.dump(files))
 
 
+@file_blueprint.route('/by-publication/<int:publication_id>', methods=['GET'], strict_slashes=False)
+def get_publication_files(publication_id):
+    from sqlalchemy import or_ as _or
+    from app.database.session import db as _db
+    from app.models.file_model import FileModel
+    from app.models.publication_schedule_model import PublicationScheduleModel
+    from app.models.publication_inventory_model import PublicationInventoryModel
+    from app.models.publication_purchase_model import PublicationPurchaseModel
+
+    pub = PublicationScheduleModel.query.get(publication_id)
+    if not pub:
+        return jsonify([])
+
+    inv_links = PublicationInventoryModel.query.filter_by(publication_id=publication_id).all()
+    pur_links = PublicationPurchaseModel.query.filter_by(publication_id=publication_id).all()
+
+    inv_ids = [l.inventory_id for l in inv_links]
+    pur_ids = [l.purchase_id for l in pur_links]
+
+    conditions = [FileModel.publication_id == publication_id]
+    if inv_ids:
+        conditions.append(FileModel.inventory_id.in_(inv_ids))
+    if pur_ids:
+        conditions.append(FileModel.purchase_id.in_(pur_ids))
+
+    files = FileModel.query.filter(_or(*conditions)).order_by(FileModel.sort_order).all()
+
+    schema = FileSchema(many=True)
+    return jsonify(schema.dump(files))
+
+
 @file_blueprint.route('/by-inventory/<int:inventory_id>/reorder', methods=['PATCH'], strict_slashes=False)
 @auth.require_role("inventory_manage", "admin")
 def reorder_inventory_files(inventory_id):

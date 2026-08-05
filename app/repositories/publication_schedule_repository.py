@@ -9,6 +9,9 @@ from app.models.inventory_model import InventoryModel
 from app.models.product_model import ProductModel
 from app.models.product_translation_model import ProductTranslationModel
 from app.models.publication_schedule_model import PublicationScheduleModel
+from app.models.publication_inventory_model import PublicationInventoryModel
+from app.models.publication_purchase_model import PublicationPurchaseModel
+from app.models.file_model import FileModel
 from app.models.type_model import TypeModel
 from app.repositories.crud_repository import CrudRepository
 from app.utils.pagination import paginate_query
@@ -18,12 +21,13 @@ class PublicationScheduleRepository(CrudRepository):
     model = PublicationScheduleModel
     order_by = (PublicationScheduleModel.scheduled_at,)
     create_fields = (
-        "inventory_id",
+        "title",
         "scheduled_at",
         "status",
         "caption",
     )
     update_fields = (
+        "title",
         "scheduled_at",
         "status",
         "caption",
@@ -32,13 +36,42 @@ class PublicationScheduleRepository(CrudRepository):
         "instagram_permalink",
         "error_message",
     )
-    _status_cache: dict = {} 
+    _status_cache: dict = {}
 
     @classmethod
     def create(cls, data):
+        from app.database.session import db
+
         if "status" not in data:
             data = {**data, "status": "pending_review"}
-        return super().create(data)
+
+        inventory_ids = data.pop("inventory_ids", None) or []
+        purchase_ids = data.pop("purchase_ids", None) or []
+
+        entity = cls.model(
+            **{
+                field: data[field]
+                for field in cls.create_fields
+                if field in data
+            }
+        )
+        db.session.add(entity)
+        db.session.flush()
+
+        for inv_id in inventory_ids:
+            db.session.add(PublicationInventoryModel(
+                publication_id=entity.id,
+                inventory_id=int(inv_id)
+            ))
+
+        for pur_id in purchase_ids:
+            db.session.add(PublicationPurchaseModel(
+                publication_id=entity.id,
+                purchase_id=int(pur_id)
+            ))
+
+        db.session.commit()
+        return entity
 
     @classmethod
     def _get_status_id(cls, name):
@@ -70,7 +103,8 @@ class PublicationScheduleRepository(CrudRepository):
             collection_code = ""
         if collection_code:
             if not _joined_inventory:
-                query = query.join(cls.model.inventory)
+                query = query.join(PublicationInventoryModel, cls.model.id == PublicationInventoryModel.publication_id)
+                query = query.join(InventoryModel, PublicationInventoryModel.inventory_id == InventoryModel.id)
                 _joined_inventory = True
             if not _joined_collection:
                 query = query.join(InventoryModel.collection)
@@ -83,7 +117,8 @@ class PublicationScheduleRepository(CrudRepository):
             product_number = ""
         if product_number:
             if not _joined_inventory:
-                query = query.join(cls.model.inventory)
+                query = query.join(PublicationInventoryModel, cls.model.id == PublicationInventoryModel.publication_id)
+                query = query.join(InventoryModel, PublicationInventoryModel.inventory_id == InventoryModel.id)
                 _joined_inventory = True
             if not _joined_product:
                 query = query.join(InventoryModel.product)
@@ -96,7 +131,8 @@ class PublicationScheduleRepository(CrudRepository):
             product_name = ""
         if product_name:
             if not _joined_inventory:
-                query = query.join(cls.model.inventory)
+                query = query.join(PublicationInventoryModel, cls.model.id == PublicationInventoryModel.publication_id)
+                query = query.join(InventoryModel, PublicationInventoryModel.inventory_id == InventoryModel.id)
                 _joined_inventory = True
             if not _joined_product:
                 query = query.join(InventoryModel.product)
@@ -118,7 +154,12 @@ class PublicationScheduleRepository(CrudRepository):
             inventory_id = None
         if inventory_id is not None:
             try:
-                query = query.filter(cls.model.inventory_id == int(inventory_id))
+                query = query.filter(
+                    cls.model.id.in_(
+                        db.session.query(PublicationInventoryModel.publication_id)
+                        .filter(PublicationInventoryModel.inventory_id == int(inventory_id))
+                    )
+                )
             except ValueError:
                 pass
 
@@ -157,8 +198,8 @@ class PublicationScheduleRepository(CrudRepository):
         else:
             query = query.order_by(cls.model.created_at.desc())
 
-        query = query.options(
-            selectinload(cls.model.inventory).options(
+        query = query.distinct(cls.model.id).options(
+            selectinload(cls.model.inventories).options(
                 selectinload(InventoryModel.product).options(
                     selectinload(ProductModel.translations),
                     selectinload(ProductModel.collection).options(
@@ -173,7 +214,9 @@ class PublicationScheduleRepository(CrudRepository):
                 selectinload(InventoryModel.extra_type),
                 selectinload(InventoryModel.condition),
                 selectinload(InventoryModel.files),
-            )
+            ),
+            selectinload(cls.model.purchases),
+            selectinload(cls.model.files),
         )
 
         return paginate_query(query, page, per_page)
@@ -197,3 +240,6 @@ class PublicationScheduleRepository(CrudRepository):
         if not status_id:
             return []
         return cls.model.query.filter(cls.model.status_id == status_id).order_by(cls.model.created_at.desc()).all()
+
+
+from app.database.session import db

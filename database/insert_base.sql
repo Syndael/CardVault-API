@@ -99,6 +99,8 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('app.inventory.files.path.pattern', '{card_type}/{collection_code}/{product_number}/{inventory_id}'),
 ('app.purchase.files.path', './../.files/purchases'),
 ('app.purchase.files.path.pattern', '{year}/{month}/{purchase_id}'),
+('app.publications.files.path', './../.files/publications'),
+('app.publications.files.path.pattern', '{year}/{month}/{publication_id}'),
 ('cardmarket.checker.price.skip', '0.5'),
 ('cardmarket.checker.price.minutes', '10080'),
 ('cardmarket.checker.wishlist.minutes', '10080');

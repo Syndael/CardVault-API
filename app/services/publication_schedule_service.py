@@ -23,7 +23,45 @@ class PublicationScheduleService(CrudService):
     @classmethod
     def update(cls, entity_id, data):
         _parse_scheduled_at(data)
-        return super().update(entity_id, data)
+
+        inventory_ids = data.pop("inventory_ids", None)
+        purchase_ids = data.pop("purchase_ids", None)
+
+        entity = cls.repository.get_by_id(entity_id)
+        if not entity:
+            return None
+
+        entity = cls.repository.update(entity, data)
+
+        if inventory_ids is not None:
+            from app.database.session import db
+            from app.models.publication_inventory_model import PublicationInventoryModel
+
+            PublicationInventoryModel.query.filter_by(publication_id=entity_id).delete()
+            for inv_id in inventory_ids:
+                db.session.add(PublicationInventoryModel(
+                    publication_id=entity_id,
+                    inventory_id=int(inv_id)
+                ))
+            db.session.flush()
+
+        if purchase_ids is not None:
+            from app.database.session import db
+            from app.models.publication_purchase_model import PublicationPurchaseModel
+
+            PublicationPurchaseModel.query.filter_by(publication_id=entity_id).delete()
+            for pur_id in purchase_ids:
+                db.session.add(PublicationPurchaseModel(
+                    publication_id=entity_id,
+                    purchase_id=int(pur_id)
+                ))
+            db.session.flush()
+
+        if inventory_ids is not None or purchase_ids is not None:
+            from app.database.session import db
+            db.session.commit()
+
+        return entity
 
     @classmethod
     def get_pending_publish(cls):

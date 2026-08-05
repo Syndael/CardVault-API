@@ -423,6 +423,24 @@ def get_file_content(file_id):
     if not mime_type:
         mime_type = "application/octet-stream"
 
+    range_header = request.headers.get("Range")
+    if range_header and mime_type and (mime_type.startswith("video/") or mime_type.startswith("audio/")):
+        file_size = os.path.getsize(resolved_path)
+        byte_range = range_header.replace("bytes=", "").split("-")
+        start = int(byte_range[0]) if byte_range[0] else 0
+        end = int(byte_range[1]) if len(byte_range) > 1 and byte_range[1] else file_size - 1
+        length = end - start + 1
+        with open(resolved_path, "rb") as f:
+            f.seek(start)
+            data = f.read(length)
+        resp = make_response(data, 206)
+        resp.headers["Content-Range"] = f"bytes {start}-{end}/{file_size}"
+        resp.headers["Accept-Ranges"] = "bytes"
+        resp.headers["Content-Length"] = str(length)
+        resp.headers["Content-Type"] = mime_type
+        resp.headers["Cache-Control"] = "public, max-age=604800"
+        return resp
+
     # Check if a specific size is requested (responsive images)
     size = request.args.get("size")
     width_str = request.args.get("w")

@@ -21,6 +21,11 @@ class FileModel(BaseModel):
         db.Integer,
         db.ForeignKey("purchases.id", ondelete="RESTRICT")
     )
+    publication_id = db.Column(
+        db.Integer,
+        db.ForeignKey("publication_schedule.id", ondelete="SET NULL"),
+        nullable=True
+    )
     language_id = db.Column(
         db.Integer,
         db.ForeignKey("languages.id", ondelete="RESTRICT")

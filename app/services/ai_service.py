@@ -3,6 +3,7 @@ import os
 import requests
 
 from app.models.inventory_model import InventoryModel
+from app.models.purchase_model import PurchaseModel
 from app.models.setting_model import SettingModel
 
 
@@ -81,7 +82,56 @@ def generate_caption(inventory_id: int, user_text: str = "") -> str:
     print(f"[AI] CONTEXT for inventory {inventory_id}:\n{ctx}\n")
     if not ctx:
         return ""
+    return _call_gemini(ctx, user_text)
 
+
+def generate_caption_for_publication(inventory_ids: list, purchase_ids: list, user_text: str = "") -> str:
+    contexts = []
+    for inv_id in inventory_ids:
+        ctx = _build_context(inv_id)
+        if ctx:
+            contexts.append(ctx)
+
+    purchase_info = []
+    if purchase_ids:
+        purchases = PurchaseModel.query.filter(PurchaseModel.id.in_(purchase_ids)).all()
+        for pur in purchases:
+            seller = pur.entity
+            seller_name = seller.name if seller else "Desconocido"
+            pur_info = f"Compra de {seller_name}"
+            if pur.purchase_date:
+                pur_info += f" ({pur.purchase_date.strftime('%d/%m/%Y')})"
+            if pur.total_amount:
+                pur_info += f" - {pur.total_amount} {pur.currency or 'EUR'}"
+            if pur.notes:
+                pur_info += f"\n  Notas: {pur.notes.strip()}"
+            purchase_info.append(pur_info)
+
+    if not contexts:
+        return _fallback_text_simple(user_text)
+
+    ctx = contexts[0]
+    extra_context = ""
+
+    if len(contexts) > 1:
+        extra_context += "\nProductos adicionales en esta publicación:\n"
+        for c in contexts[1:]:
+            extra_context += f"  - {c['info_line']}\n"
+
+    if purchase_info:
+        extra_context += "\nCompras asociadas:\n"
+        for pi in purchase_info:
+            extra_context += f"  - {pi}\n"
+
+    full_ctx = dict(ctx)
+    full_ctx["extra_context"] = extra_context
+    full_ctx["context_str"] = ctx["context_str"] + "\n" + extra_context
+
+    return _call_gemini(full_ctx, user_text)
+
+
+def _call_gemini(ctx: dict, user_text: str = "") -> str:
+    print(f"[AI] CONTEXT:\n{ctx}\n")
     if user_text:
         prompt = (
             "Eres un experto en TCG y coleccionismo. Tu trabajo es COMPLEMENTAR el texto "
@@ -93,8 +143,9 @@ def generate_caption(inventory_id: int, user_text: str = "") -> str:
             "puede ser sobre el Pokémon (lore, rareza, historia competitiva, diseño, aparición en "
             "anime/juegos), sobre la carta en sí (valor, rareza, colección), o sobre el estado "
             "del producto si es relevante.\n"
-            "2. NO uses frases genéricas como 'ideal para coleccionistas'.\n"
-            "3. Sé dinámico: si es un Pokémon habla del Pokémon, si es un objeto/trainer/energy "
+            "2. Si hay compras asociadas, puedes mencionar brevemente la procedencia y precio.\n"
+            "3. NO uses frases genéricas como 'ideal para coleccionistas'.\n"
+            "4. Sé dinámico: si es un Pokémon habla del Pokémon, si es un objeto/trainer/energy "
             "habla de su uso en el juego, si es sellado menciónalo.\n\n"
             "Después del complemento, añade una línea en blanco y copia EXACTAMENTE "
             f"esta línea tal cual, sin modificar nada:\n\"{ctx['info_line']}\"\n"
@@ -123,8 +174,9 @@ def generate_caption(inventory_id: int, user_text: str = "") -> str:
             "1. Un texto breve (2-3 líneas máximo) con un dato curioso o relevante "
             "sobre la carta/Pokémon: lore del personaje, rareza, historia competitiva, "
             "diseño, aparición en anime/juegos, valor de colección, o estado del producto.\n"
-            "2. NO uses frases genéricas como 'ideal para coleccionistas'.\n"
-            "3. Sé dinámico según el tipo de producto: Pokémon, Trainer, Energy, sellado, etc.\n\n"
+            "2. Si hay compras asociadas, puedes mencionar brevemente la procedencia y precio.\n"
+            "3. NO uses frases genéricas como 'ideal para coleccionistas'.\n"
+            "4. Sé dinámico según el tipo de producto: Pokémon, Trainer, Energy, sellado, etc.\n\n"
             "Después del texto, añade una línea en blanco y copia EXACTAMENTE "
             f"esta línea tal cual, sin modificar nada:\n\"{ctx['info_line']}\"\n"
             "Luego añade otra línea en blanco y genera 7-9 hashtags.\n"
@@ -192,3 +244,10 @@ def _fallback_text(ctx: dict, user_text: str = "") -> str:
     if user_text:
         return f"{user_text}\n\nIA:\n{suggestion}\n\n{info_line}\n\n{' '.join(tags)}"
     return f"IA:\n{suggestion}\n\n{info_line}\n\n{' '.join(tags)}"
+
+
+def _fallback_text_simple(user_text: str = "") -> str:
+    tags = ["#CardVault", "#TCG", "#Coleccionismo", "#Syndael_"]
+    if user_text:
+        return f"{user_text}\n\nIA:\nUna publicación especial para la colección.\n\n{' '.join(tags)}"
+    return f"IA:\nUna publicación especial para la colección.\n\n{' '.join(tags)}"
