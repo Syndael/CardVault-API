@@ -64,6 +64,10 @@ class PublicationScheduleService(CrudService):
         return entity
 
     @classmethod
+    def get_in_date_range(cls, start, end):
+        return cls.repository.get_in_date_range(start, end)
+
+    @classmethod
     def get_pending_publish(cls):
         return cls.repository.get_pending_publish()
 

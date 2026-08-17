@@ -2,6 +2,7 @@ from datetime import datetime
 
 from flask import request
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import selectinload
 
 from app.models.collection_model import CollectionModel
@@ -233,6 +234,28 @@ class PublicationScheduleRepository(CrudRepository):
             cls.model.status_id.in_(status_ids),
             cls.model.scheduled_at <= now
         ).order_by(cls.model.scheduled_at).all()
+
+    @classmethod
+    def get_in_date_range(cls, start, end):
+        query = cls.model.query.filter(
+            or_(
+                cls.model.published_at >= start,
+                cls.model.scheduled_at >= start,
+            )
+        ).filter(
+            or_(
+                cls.model.published_at <= end,
+                cls.model.scheduled_at <= end,
+            )
+        ).options(
+            joinedload(cls.model.inventories).joinedload(
+                InventoryModel.product
+            ),
+            joinedload(cls.model.inventories).joinedload(
+                InventoryModel.collection
+            ),
+        )
+        return query.all()
 
     @classmethod
     def get_by_status(cls, status_name):

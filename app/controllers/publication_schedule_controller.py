@@ -20,6 +20,54 @@ schema = PublicationScheduleSchema()
 create_schema = PublicationCreateSchema()
 
 
+def _item_day(item):
+    dt = item.published_at or item.scheduled_at
+    return dt.date().isoformat() if dt else None
+
+
+def _item_summary(item):
+    inv = item.inventories[0] if item.inventories else None
+    product = inv.product if inv else None
+    collection = inv.collection if inv else None
+    return {
+        "id": item.id,
+        "title": item.title,
+        "status": item.status,
+        "scheduled_at": item.scheduled_at.isoformat() if item.scheduled_at else None,
+        "published_at": item.published_at.isoformat() if item.published_at else None,
+        "collection_code": collection.code if collection else None,
+        "product_number": product.product_number if product else None,
+    }
+
+
+@publication_schedule_blueprint.route("/calendar", methods=["GET"], strict_slashes=False)
+def calendar():
+    if _roles_guard(["inventory_manage", "admin"], None, "GET"):
+        return jsonify({"message": "Forbidden"}), 403
+    try:
+        start = datetime.fromisoformat(request.args.get("start", ""))
+        end = datetime.fromisoformat(request.args.get("end", ""))
+    except (TypeError, ValueError):
+        return jsonify({"message": "start and end params required (ISO)"}), 400
+
+    items = PublicationScheduleService.get_in_date_range(start, end)
+
+    days = {}
+    for item in items:
+        day = _item_day(item)
+        if not day:
+            continue
+        bucket = days.setdefault(day, {"scheduled": 0, "published": 0, "items": []})
+        summary = _item_summary(item)
+        bucket["items"].append(summary)
+        if item.status == "published":
+            bucket["published"] += 1
+        else:
+            bucket["scheduled"] += 1
+
+    return jsonify({"days": days})
+
+
 @publication_schedule_blueprint.route("/pending-publish", methods=["GET"], strict_slashes=False)
 def get_pending_publish():
     if _roles_guard(["inventory_manage", "admin"], None, "GET"):
