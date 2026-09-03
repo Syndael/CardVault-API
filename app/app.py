@@ -8,6 +8,7 @@ from app.models.role_model import RoleModel
 from app.controllers.collection_controller import collection_blueprint
 from app.controllers.collection_tracking_controller import collection_tracking_blueprint
 from app.controllers.collection_translation_controller import collection_translation_blueprint
+from app.controllers.collection_alternative_code_controller import collection_alternative_code_blueprint
 from app.controllers.entity_controller import entity_blueprint
 from app.controllers.file_controller import file_blueprint
 from app.controllers.inventory_controller import inventory_blueprint
@@ -111,6 +112,7 @@ def create_app():
 
     register_protected(type_blueprint, "/api/types")
     register_protected(collection_translation_blueprint, "/api/collection-translations")
+    register_protected(collection_alternative_code_blueprint, "/api/collection-alternative-codes")
     register_protected(language_blueprint, "/api/languages")
     register_protected(collection_blueprint, "/api/collections")
     register_protected(collection_tracking_blueprint, "/api/collection-tracking")

@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 from app.database.session import db
 from app.models.collection_model import CollectionModel
 from app.models.collection_translation_model import CollectionTranslationModel
+from app.models.collection_alternative_code_model import CollectionAlternativeCodeModel
 from app.models.type_model import TypeModel
 from app.utils.pagination import paginate_query
 
@@ -19,6 +20,7 @@ class CollectionRepository:
         return CollectionModel.query.options(
             joinedload(CollectionModel.translations).joinedload(CollectionTranslationModel.language),
             joinedload(CollectionModel.card_type),
+            joinedload(CollectionModel.alternative_codes),
         )
 
     @staticmethod
@@ -52,7 +54,8 @@ class CollectionRepository:
         query = CollectionRepository._base_query().filter(
             or_(
                 CollectionModel.code.ilike(like),
-                CollectionModel.id.cast(db.String).ilike(like)
+                CollectionModel.id.cast(db.String).ilike(like),
+                CollectionModel.alternative_codes.any(CollectionAlternativeCodeModel.code.ilike(like))
             )
         )
         query = CollectionRepository._apply_sort(query, sort_by)
@@ -84,6 +87,13 @@ class CollectionRepository:
         force_download = filters.get("force_download")
         if force_download is not None and force_download != "":
             conditions.append(CollectionModel.force_download == (force_download in ("1", "true", "True")))
+        alternative_code = filters.get("alternative_code")
+        if alternative_code:
+            conditions.append(
+                CollectionModel.alternative_codes.any(
+                    CollectionAlternativeCodeModel.code.ilike(f"%{alternative_code}%")
+                )
+            )
         if conditions:
             query = query.filter(*conditions)
         query = CollectionRepository._apply_sort(query, sort_by)

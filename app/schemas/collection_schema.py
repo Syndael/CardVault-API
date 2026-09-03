@@ -19,6 +19,7 @@ class CollectionSchema(Schema):
     )
     name = fields.Method("get_name", dump_only=True)
     name_alter = fields.Method("get_name_alter", dump_only=True)
+    alternative_codes = fields.Method("get_alternative_codes", dump_only=True)
 
     def _best_translation(self, obj):
         if not obj.translations:
@@ -35,3 +36,8 @@ class CollectionSchema(Schema):
     def get_name_alter(self, obj):
         best = self._best_translation(obj)
         return best.name_alter if best and best.name_alter else None
+
+    def get_alternative_codes(self, obj):
+        if not obj.alternative_codes:
+            return []
+        return [ac.code for ac in obj.alternative_codes]
